@@ -163,6 +163,9 @@ func New(kafkaUrl, kafkaBlockTopic, kafkaAccountCheckingTopic, kafkaAccountCheck
 		statsLogFile = filepath.Join(datadir, statsLogFile)
 		checkingErrFile = filepath.Join(datadir, checkingErrFile)
 	}
+	log.Debug("PlatON stats log file", "datadir", datadir)
+	log.Debug("PlatON stats log file", "statsLogFile", statsLogFile)
+	log.Debug("PlatON stats log file", "checkingErrFile", checkingErrFile)
 	return platonStatsService, nil
 }
 
@@ -366,13 +369,14 @@ func readBlockNumber() (uint64, error) {
 			log.Warn("Failed to read PlatON stats service log", "error", err)
 			return 0, errors.New("Failed to read PlatON stats service log")
 		} else {
+			log.Warn("Success to read PlatON stats service log", "blockNumber", blockNumber)
 			return blockNumber, nil
 		}
 	}
 }
 
 func writeStatsLog(blockNumber uint64) {
-	if err := common.WriteFile(statsLogFile, []byte(strconv.FormatUint(blockNumber, 10)), statsLogFlag, 666); err != nil {
+	if err := common.WriteFile(statsLogFile, []byte(strconv.FormatUint(blockNumber, 10)), statsLogFlag, os.ModePerm); err != nil {
 		log.Error("Failed to log stats block number", "blockNumber", blockNumber)
 	}
 }
@@ -507,7 +511,7 @@ func getBalance(backend *eth.EthAPIBackend, address common.Address, blockNr rpc.
 func writeCheckingErr(bech32 string, blockNumber uint64, chainBalance, trackingBalance *big.Int) {
 	log.Error("Account chain and tracking balances are not equal", "blockNumber", blockNumber, "address", bech32, "chainBalance", chainBalance, "trackingBalance", trackingBalance)
 	content := fmt.Sprintf("blockNumber=%d    account=%s    chainBalance=%d    trackingBalance=%d\n", blockNumber, bech32, chainBalance, trackingBalance)
-	err := common.WriteFile(checkingErrFile, []byte(content), checkingErrFlag, 666)
+	err := common.WriteFile(checkingErrFile, []byte(content), checkingErrFlag, os.ModePerm)
 	if err != nil {
 		log.Error("Failed to log account-checking-error", "content", content)
 	}
