@@ -309,7 +309,7 @@ func genesisPluginState(genesisDataCollector *common.GenesisData, g *Genesis, st
 
 	//首先从CDF基金账户中，向激励池转入一笔激励奖金；并初始化创世块的锁仓释放计划，这个锁仓释放计划，以后每年末，将向CDF基金账户释放一笔钱。
 	if !(g.Config.ChainID.Cmp(params.AlayaChainConfig.ChainID) == 0 || g.Config.ChainID.Cmp(params.AlayaTestChainConfig.ChainID) == 0) {
-		err := plugin.NewRestrictingPlugin(nil).InitGenesisRestrictingPlans(genesisDataCollector,statedb)
+		err := plugin.NewRestrictingPlugin(nil).InitGenesisRestrictingPlans(genesisDataCollector, statedb)
 		if err != nil {
 			return fmt.Errorf("Failed to init genesis restricting plans, err:%s", err.Error())
 		}

@@ -43,7 +43,6 @@ require (
 	github.com/panjf2000/ants/v2 v2.4.1
 	github.com/pborman/uuid v0.0.0-20170112150404-1b00554d8222
 	github.com/peterh/liner v1.0.1-0.20170902204657-a37ad3984311
-	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/prometheus v1.7.2-0.20170814170113-3101606756c5
 	github.com/rjeczalik/notify v0.9.1
@@ -64,5 +63,5 @@ require (
 	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20200316214253-d7b0ff38cac9
 	gopkg.in/sourcemap.v1 v1.0.5 // indirect
 	gopkg.in/urfave/cli.v1 v1.20.0
-	gotest.tools v2.2.0+incompatible // indirect
+	gotest.tools v2.2.0+incompatible
 )
