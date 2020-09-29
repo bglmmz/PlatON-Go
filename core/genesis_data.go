@@ -85,9 +85,9 @@ func genesisStakingData(genesisDataCollector *common.GenesisData, prevHash commo
 			StakingBlockNum: uint64(0),
 			Description: staking.Description{
 				ExternalId: "",
-				NodeName:   "platon.node." + fmt.Sprint(index+1),
-				Website:    "www.platon.network",
-				Details:    "The PlatON Node",
+				NodeName:   "alaya.node." + fmt.Sprint(index+1),
+				Website:    "alaya.network",
+				Details:    "The Alaya Node",
 			},
 		}
 
