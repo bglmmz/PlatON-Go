@@ -13,6 +13,7 @@ require (
 	github.com/btcsuite/btcutil v1.0.2
 	github.com/cespare/cp v0.1.0
 	github.com/cespare/xxhash v1.1.0
+	github.com/confluentinc/confluent-kafka-go v1.4.2
 	github.com/davecgh/go-spew v1.1.1
 	github.com/deckarep/golang-set v1.7.1
 	github.com/docker/docker v17.12.0-ce-rc1.0.20180625184442-8e610b2b55bf+incompatible
@@ -57,8 +58,7 @@ require (
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 	golang.org/x/sys v0.0.0-20200602225109-6fdc65e7d980
-	golang.org/x/text v0.3.1-0.20171227012246-e19ae1496984 // indirect
-	golang.org/x/tools v0.0.0-20170215214335-be0fcc31ae23
+	golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce
 	gopkg.in/olebedev/go-duktape.v3 v3.0.0-20200316214253-d7b0ff38cac9
