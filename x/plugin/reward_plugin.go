@@ -55,9 +55,9 @@ type RewardMgrPlugin struct {
 
 const (
 	LessThanFoundationYearDeveloperRate    = 100
-	AfterFoundationYearDeveloperRewardRate = 85
-	AfterFoundationYearFoundRewardRate     = 15
-	RewardPoolIncreaseRate                 = 20 // 20% of fixed-issued tokens are allocated to reward pool each year
+	AfterFoundationYearDeveloperRewardRate = 10
+	AfterFoundationYearFoundRewardRate     = 50
+	RewardPoolIncreaseRate                 = 40 // 40% of fixed-issued tokens are allocated to reward pool each year
 
 )
 
@@ -143,6 +143,7 @@ func (rmp *RewardMgrPlugin) EndBlock(blockHash common.Hash, head *types.Header, 
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -180,21 +181,21 @@ func (rmp *RewardMgrPlugin) isLessThanFoundationYear(thisYear uint32) bool {
 	return false
 }
 
-func (rmp *RewardMgrPlugin) addPlatONFoundation(state xcom.StateDB, currIssuance *big.Int, allocateRate uint32) (common.Address, *big.Int) {
+func (rmp *RewardMgrPlugin) addPlatONFoundation(state xcom.StateDB, currIssuance *big.Int, allocateRate uint32) {
 	platonFoundationIncr := percentageCalculation(currIssuance, uint64(allocateRate))
 	state.AddBalance(xcom.PlatONFundAccount(), platonFoundationIncr)
-	return xcom.PlatONFundAccount(), platonFoundationIncr
 }
 
-func (rmp *RewardMgrPlugin) addCommunityDeveloperFoundation(state xcom.StateDB, currIssuance *big.Int, allocateRate uint32) (common.Address, *big.Int) {
+
+func (rmp *RewardMgrPlugin) addCommunityDeveloperFoundation(state xcom.StateDB, currIssuance *big.Int, allocateRate uint32) {
 	developerFoundationIncr := percentageCalculation(currIssuance, uint64(allocateRate))
 	state.AddBalance(xcom.CDFAccount(), developerFoundationIncr)
-	return xcom.CDFAccount(), developerFoundationIncr
 }
 func (rmp *RewardMgrPlugin) addRewardPoolIncreaseIssuance(state xcom.StateDB, currIssuance *big.Int, allocateRate uint32) {
 	rewardpoolIncr := percentageCalculation(currIssuance, uint64(allocateRate))
 	state.AddBalance(vm.RewardManagerPoolAddr, rewardpoolIncr)
 }
+
 
 // increaseIssuance used for increase issuance at the end of each year
 func (rmp *RewardMgrPlugin) increaseIssuance(thisYear, lastYear uint32, state xcom.StateDB, blockNumber uint64, blockHash common.Hash) error {
@@ -220,17 +221,8 @@ func (rmp *RewardMgrPlugin) increaseIssuance(thisYear, lastYear uint32, state xc
 		currIssuance = tmp.Div(tmp, big.NewInt(10000))
 
 		// Restore the cumulative issue at this year end
-		/*histIssuance.Add(histIssuance, currIssuance)
-		SetYearEndCumulativeIssue(state, thisYear, histIssuance)
-		log.Debug("Call EndBlock on reward_plugin: increase issuance", "thisYear", thisYear, "addIssuance", currIssuance, "hit", histIssuance)
-		*/
-
 		//计算总发行金额
 		newTotalIssuance := new(big.Int).Add(histIssuance, currIssuance)
-		//todo: chain_env.issue_amount, chain_env.total_issue_amount，更新发行金额，总发行金额(整个操作在最后做)。
-		//todo:增加一个表issue_history表，block/hash/time/issue/issue_total/reward_pool/开发者基金增加值/Platon基金增加值
-		//todo:chain_env.reward_pool_available, chain_env.reward_pool_next_year_available，
-		//todo: 重新设置 reward_pool_available = reward_pool_available + reward_pool_next_year_available + currIssuance, reward_pool_next_year_available=0
 		SetYearEndCumulativeIssue(state, thisYear, newTotalIssuance)
 		log.Debug("Call EndBlock on reward_plugin: increase issuance", "thisYear", thisYear, "origTotalIssuance", histIssuance, "increment", currIssuance, "newTotalIssuance", newTotalIssuance)
 
@@ -239,34 +231,26 @@ func (rmp *RewardMgrPlugin) increaseIssuance(thisYear, lastYear uint32, state xc
 		additionalIssuance.AdditionalBase = histIssuance          //上年发行量
 		additionalIssuance.AdditionalAmount = currIssuance        //今年增发量 = 上年发行量 * 今年增发率
 		additionalIssuance.AdditionalRate = increaseIssuanceRatio //今年增发率
-	}
-	//今年的增发量，需要转入一部分到激励池中
-	rewardpoolIncr := percentageCalculation(currIssuance, uint64(RewardPoolIncreaseRate))
-	state.AddBalance(vm.RewardManagerPoolAddr, rewardpoolIncr)
 
+	}
+	rewardpoolIncr := percentageCalculation(currIssuance, uint64(RewardPoolIncreaseRate))
+	foundationIncr := percentageCalculation(currIssuance, uint64(AfterFoundationYearFoundRewardRate))
+	developerFoundationIncr := percentageCalculation(currIssuance, uint64(AfterFoundationYearDeveloperRewardRate))
+	state.AddBalance(vm.RewardManagerPoolAddr, rewardpoolIncr)
 	//stats: 收集增发数据
 	additionalIssuance.AddIssuanceItem(vm.RewardManagerPoolAddr, rewardpoolIncr)
 
-	//todo: 增发剩余金额
-	lessBalance := new(big.Int).Sub(currIssuance, rewardpoolIncr)
-	if rmp.isLessThanFoundationYear(thisYear) {
-		//如果增发次数小于配置值（注意，配置值包含了创世块中已经分配的一次），则增发剩余金额都转入社区开发者金额
-		log.Debug("Call EndBlock on reward_plugin: increase issuance to developer", "thisYear", thisYear, "developBalance", lessBalance)
-		address, amount := rmp.addCommunityDeveloperFoundation(state, lessBalance, LessThanFoundationYearDeveloperRate)
-		//stats: 收集增发数据
-		additionalIssuance.AddIssuanceItem(address, amount)
-	} else {
-		//否则，增发剩余金额的50%，分配给社区开发者基金，50%，分配给PlatON基金会
-		log.Debug("Call EndBlock on reward_plugin: increase issuance to developer and platon", "thisYear", thisYear, "develop and platon Balance", lessBalance)
+	state.AddBalance(xcom.CDFAccount(), developerFoundationIncr)
+	//stats: 收集增发数据
+	additionalIssuance.AddIssuanceItem(xcom.CDFAccount(), developerFoundationIncr)
 
-		address, amount := rmp.addCommunityDeveloperFoundation(state, lessBalance, AfterFoundationYearDeveloperRewardRate)
-		//stats: 收集增发数据
-		additionalIssuance.AddIssuanceItem(address, amount)
+	state.AddBalance(xcom.PlatONFundAccount(), foundationIncr)
+	//stats: 收集增发数据
+	additionalIssuance.AddIssuanceItem(xcom.PlatONFundAccount(), foundationIncr)
 
-		address, amount = rmp.addPlatONFoundation(state, lessBalance, AfterFoundationYearFoundRewardRate)
-		//stats: 收集增发数据
-		additionalIssuance.AddIssuanceItem(address, amount)
-	}
+
+	log.Debug("Call EndBlock on reward_plugin: increase issuance to developer and platon", "thisYear", thisYear, "rewardpoolIncr", rewardpoolIncr,
+		"foundationIncr", foundationIncr, "developerFoundationIncr", developerFoundationIncr)
 
 	common.CollectAdditionalIssuance(blockNumber, additionalIssuance)
 

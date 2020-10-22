@@ -1765,6 +1765,7 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 	needRMLowVersionLen := 0
 	invalidLen := 0 // the num that the can need to remove
 
+	invalidCan := make(map[discover.NodeID]struct{})
 	removeCans := make(staking.NeedRemoveCans) // the candidates need to remove
 	withdrewCans := make(staking.CandidateMap) // the candidates had withdrew
 
@@ -1815,6 +1816,7 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 		if checkHaveSlash(can.Status) {
 			removeCans[v.NodeId] = can
 			hasSlashLen++
+			invalidCan[can.NodeId] = struct{}{}
 			isSlash = true
 		}
 
@@ -1835,6 +1837,7 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 
 		if xutil.CalcVersion(can.ProgramVersion) < currVersion {
 			removeCans[v.NodeId] = can
+			invalidCan[can.NodeId] = struct{}{}
 			needRMLowVersionLen++
 		}
 
@@ -1894,6 +1897,9 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 
 	}
 	needRMwithdrewLen = len(withdrewQueue)
+	for _, nodeID := range withdrewQueue {
+		invalidCan[nodeID] = struct{}{}
+	}
 
 	// some validators that meets the following conditions must be replaced first.
 	// eg.
@@ -1903,7 +1909,8 @@ func (sk *StakingPlugin) Election(blockHash common.Hash, header *types.Header, s
 	// 	  is lower than the version of the governance module on the current chain.
 	// 4. withdrew staking and not in the current epoch validator list
 	//
-	invalidLen = hasSlashLen + needRMwithdrewLen + needRMLowVersionLen
+	//invalidLen = hasSlashLen + needRMwithdrewLen + needRMLowVersionLen
+	invalidLen = len(invalidCan)
 
 	shuffle := func(invalidLen int, currQueue, vrfQueue staking.ValidatorQueue, blockNumber uint64, parentHash common.Hash) (staking.ValidatorQueue, error) {
 

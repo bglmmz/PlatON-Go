@@ -49,7 +49,7 @@ const (
 	FloorMaxConsensusVals     = 4
 	CeilMaxConsensusVals      = 25
 	PositiveInfinity          = "+∞"
-	CeilUnStakeFreezeDuration = 28 * 4
+	CeilUnStakeFreezeDuration = 168 * 2
 	CeilMaxEvidenceAge        = CeilUnStakeFreezeDuration - 1
 
 	RewardPerMaxChangeRangeUpperLimit = 2000
@@ -69,8 +69,8 @@ var (
 	DelegateUpperLimit, _ = new(big.Int).SetString("10000000000000000000000", 10)
 
 	// hard code genesis staking balance
-	// 2W ATP
-	GeneStakingAmount, _ = new(big.Int).SetString("20000000000000000000000", 10)
+	// 10500 ATP
+	GeneStakingAmount, _ = new(big.Int).SetString("10500000000000000000000", 10)
 
 	// 1W
 	StakeLowerLimit, _ = new(big.Int).SetString("10000000000000000000000", 10)
@@ -173,11 +173,15 @@ const (
 
 func getDefaultEMConfig(netId int8) *EconomicModel {
 	var (
-		ok            bool
-		cdfundBalance *big.Int
+		ok                bool
+		cdfundBalance     *big.Int
+		platonFundBalance *big.Int
 	)
 
-	if cdfundBalance, ok = new(big.Int).SetString("4000000000000000000000000", 10); !ok {
+	if cdfundBalance, ok = new(big.Int).SetString("500000000000000000000000", 10); !ok {
+		return nil
+	}
+	if platonFundBalance, ok = new(big.Int).SetString("2500000000000000000000000", 10); !ok {
 		return nil
 	}
 
@@ -228,7 +232,7 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 			InnerAcc: innerAccount{
 				PlatONFundAccount: common.MustBech32ToAddress("atp10spacq8cz76y2n60pl7sg5yazncmjuus54xaaq"),
-				PlatONFundBalance: new(big.Int).SetInt64(0),
+				PlatONFundBalance: platonFundBalance,
 				CDFAccount:        common.MustBech32ToAddress("atp17tfkaghs4vded6mz6k53xyv5cvqsl63h7wu5ty"),
 				CDFBalance:        new(big.Int).Set(cdfundBalance),
 			},
@@ -246,7 +250,7 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 				StakeThreshold:          new(big.Int).Set(StakeLowerLimit),
 				OperatingThreshold:      new(big.Int).Set(DelegateLowerLimit),
 				MaxValidators:           uint64(101),
-				UnStakeFreezeDuration:   uint64(8), // freezing 28 epoch
+				UnStakeFreezeDuration:   uint64(168), // freezing 28 epoch
 				RewardPerMaxChangeRange: uint16(500),
 				RewardPerChangeInterval: uint16(10),
 			},
@@ -257,7 +261,7 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 				SlashBlocksReward:          uint32(250),
 				ZeroProduceCumulativeTime:  uint16(30),
 				ZeroProduceNumberThreshold: uint16(1),
-				ZeroProduceFreezeDuration:  uint64(7),
+				ZeroProduceFreezeDuration:  uint64(56),
 			},
 			Gov: governanceConfig{
 				VersionProposalVoteDurationSeconds: uint64(14 * 24 * 3600),
@@ -278,9 +282,9 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 				IncreaseIssuanceRatio: 500,
 			},
 			InnerAcc: innerAccount{
-				PlatONFundAccount: common.MustBech32ToAddress("atp10spacq8cz76y2n60pl7sg5yazncmjuus54xaaq"),
-				PlatONFundBalance: new(big.Int).SetInt64(0),
-				CDFAccount:        common.MustBech32ToAddress("atp17tfkaghs4vded6mz6k53xyv5cvqsl63h7wu5ty"),
+				PlatONFundAccount: common.MustBech32ToAddress("atp147txew2paj3y8kqthzelslxyyjmkzt0gwe99cr"),
+				PlatONFundBalance: platonFundBalance,
+				CDFAccount:        common.MustBech32ToAddress("atp14cl7nrys9xlfcx6clpy4fs4rsasc2htdjz9unu"),
 				CDFBalance:        new(big.Int).Set(cdfundBalance),
 			},
 		}
@@ -297,7 +301,7 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 				StakeThreshold:          new(big.Int).Set(StakeLowerLimit),
 				OperatingThreshold:      new(big.Int).Set(DelegateLowerLimit),
 				MaxValidators:           uint64(101),
-				UnStakeFreezeDuration:   uint64(8), // freezing 28 epoch
+				UnStakeFreezeDuration:   uint64(168), // freezing 28 epoch
 				RewardPerMaxChangeRange: uint16(500),
 				RewardPerChangeInterval: uint16(10),
 			},
@@ -308,7 +312,7 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 				SlashBlocksReward:          uint32(250),
 				ZeroProduceCumulativeTime:  uint16(30),
 				ZeroProduceNumberThreshold: uint16(1),
-				ZeroProduceFreezeDuration:  uint64(7),
+				ZeroProduceFreezeDuration:  uint64(56),
 			},
 			Gov: governanceConfig{
 				VersionProposalVoteDurationSeconds: uint64(14 * 24 * 3600),
@@ -330,7 +334,7 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 			InnerAcc: innerAccount{
 				PlatONFundAccount: common.MustBech32ToAddress("atx10spacq8cz76y2n60pl7sg5yazncmjuus7n6hw2"),
-				PlatONFundBalance: new(big.Int).SetInt64(0),
+				PlatONFundBalance: platonFundBalance,
 				CDFAccount:        common.MustBech32ToAddress("atx17tfkaghs4vded6mz6k53xyv5cvqsl63h5gq7cw"),
 				CDFBalance:        new(big.Int).Set(cdfundBalance),
 			},
@@ -381,7 +385,7 @@ func getDefaultEMConfig(netId int8) *EconomicModel {
 			},
 			InnerAcc: innerAccount{
 				PlatONFundAccount: common.MustBech32ToAddress("atx1q8r3em9wlamt0qe92alx5a9ff5j2s6lzlxrsxg"),
-				PlatONFundBalance: new(big.Int).SetInt64(0),
+				PlatONFundBalance: platonFundBalance,
 				CDFAccount:        common.MustBech32ToAddress("atx1qtxa5d3defggwzdx2877z5fmytfu9f89d2ue2g"),
 				CDFBalance:        new(big.Int).Set(cdfundBalance),
 			},
