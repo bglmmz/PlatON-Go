@@ -1002,7 +1002,9 @@ func (w *worker) commitNewWork(interrupt *int32, noempty bool, timestamp int64, 
 		log.Error("Failed to GetReactorInstance BeginBlocker on worker", "blockNumber", header.Number, "err", err)
 		return err
 	}
-
+	//注意：
+	//这行底层代码， 原来是再BeginBlocker之前，这个是不对的。不许移动到BeginBlocker()之后，
+	//这样，再setWorkerCoinBase()方法中，才能正确读取到CandidateInfo，才能读取到正确的收益地址。
 	// Only set the coinbase if our consensus engine is running (avoid spurious block rewards)
 	if w.isRunning() {
 		if b, ok := w.engine.(consensus.Bft); ok {
