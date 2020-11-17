@@ -186,7 +186,6 @@ func (rmp *RewardMgrPlugin) addPlatONFoundation(state xcom.StateDB, currIssuance
 	state.AddBalance(xcom.PlatONFundAccount(), platonFoundationIncr)
 }
 
-
 func (rmp *RewardMgrPlugin) addCommunityDeveloperFoundation(state xcom.StateDB, currIssuance *big.Int, allocateRate uint32) {
 	developerFoundationIncr := percentageCalculation(currIssuance, uint64(allocateRate))
 	state.AddBalance(xcom.CDFAccount(), developerFoundationIncr)
@@ -195,7 +194,6 @@ func (rmp *RewardMgrPlugin) addRewardPoolIncreaseIssuance(state xcom.StateDB, cu
 	rewardpoolIncr := percentageCalculation(currIssuance, uint64(allocateRate))
 	state.AddBalance(vm.RewardManagerPoolAddr, rewardpoolIncr)
 }
-
 
 // increaseIssuance used for increase issuance at the end of each year
 func (rmp *RewardMgrPlugin) increaseIssuance(thisYear, lastYear uint32, state xcom.StateDB, blockNumber uint64, blockHash common.Hash) error {
@@ -247,7 +245,6 @@ func (rmp *RewardMgrPlugin) increaseIssuance(thisYear, lastYear uint32, state xc
 	state.AddBalance(xcom.PlatONFundAccount(), foundationIncr)
 	//stats: 收集增发数据
 	additionalIssuance.AddIssuanceItem(xcom.PlatONFundAccount(), foundationIncr)
-
 
 	log.Debug("Call EndBlock on reward_plugin: increase issuance to developer and platon", "thisYear", thisYear, "rewardpoolIncr", rewardpoolIncr,
 		"foundationIncr", foundationIncr, "developerFoundationIncr", developerFoundationIncr)
@@ -329,6 +326,8 @@ func (rmp *RewardMgrPlugin) HandleDelegatePerReward(blockHash common.Hash, block
 					"blockNumber", blockNumber, "blockHash", blockHash, "nodeID", verifier.NodeId.String(), "err", err)
 				return err
 			}
+			//为下个结算周期保存节点新的新信息（累计委托分红，新周期累计分红，新的分红比例）
+			//todo:lvxiaoyi，这个逻辑放到PrepareNextEpoch()中，作为一个整体逻辑
 			if err := rmp.stakingPlugin.db.SetCanMutableStore(blockHash, canAddr, verifier.CandidateMutable); err != nil {
 				log.Error("Failed to handleDelegatePerReward on rewardMgrPlugin: setCanMutableStore  failed",
 					"blockNumber", blockNumber, "blockHash", blockHash, "err", err, "mutable", verifier.CandidateMutable)

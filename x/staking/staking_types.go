@@ -126,8 +126,8 @@ func (status CandidateStatus) IsInvalidWithdrew() bool {
 
 // The Candidate info
 type Candidate struct {
-	*CandidateBase
-	*CandidateMutable
+	*CandidateBase    //基本信息
+	*CandidateMutable //可变信息
 }
 
 func (can *Candidate) String() string {
@@ -226,9 +226,9 @@ type CandidateMutable struct {
 	// The epoch number at delegate or edit
 	DelegateEpoch uint32
 	// Effective total delegate
-	DelegateTotal *big.Int
+	DelegateTotal *big.Int // 所有有效委托
 	// hesitant total delegate
-	DelegateTotalHes *big.Int
+	DelegateTotalHes *big.Int //所有犹豫期委托
 	// Delegate reward amount percent for current settlement cycle
 	RewardPer uint16
 	// Delegate reward amount percent for next settlement cycle

@@ -104,6 +104,7 @@ func (sk *StakingPlugin) BeginBlock(blockHash common.Hash, header *types.Header,
 	// adjust rewardPer and nextRewardPer
 	blockNumber := header.Number.Uint64()
 	if xutil.IsBeginOfEpoch(blockNumber) {
+		//结算周期开始时，列出验证人列表（101）
 		current, err := sk.getVerifierList(blockHash, blockNumber, QueryStartNotIrr)
 		if err != nil {
 			log.Error("Failed to query current round validators on stakingPlugin BeginBlock",
@@ -111,6 +112,7 @@ func (sk *StakingPlugin) BeginBlock(blockHash common.Hash, header *types.Header,
 			return err
 		}
 		for _, v := range current.Arr {
+			//验证人最近修改历史
 			canOld, err := sk.GetCanMutable(blockHash, v.NodeAddress)
 			if snapshotdb.NonDbNotFoundErr(err) || canOld.IsEmpty() {
 				log.Error("Failed to get candidate info on stakingPlugin BeginBlock", "nodeAddress", v.NodeAddress.String(),
@@ -121,11 +123,20 @@ func (sk *StakingPlugin) BeginBlock(blockHash common.Hash, header *types.Header,
 				continue
 			}
 			var changed bool
+			//验证人的委托金额是否发生改变？意味着委托用户的委托，要到下个结算周期开始才生效，才有委托分红。
 			changed = lazyCalcNodeTotalDelegateAmount(xutil.CalculateEpoch(blockNumber), canOld)
+
+			//验证人出块奖励的委托分红比例是否改变？如果改变，则此结算周期开始设置新的分红比例
+			//todo:lvxioyi: 这个值，应该用完就清理，所以这里清理是不合适的。
+			//（其实这个逻辑重复了，在reward_plugin.go#EndBlock#HandleDelegatePerReward#PrepareNextEpoch中已经处理）
 			if canOld.RewardPer != canOld.NextRewardPer {
 				canOld.RewardPer = canOld.NextRewardPer
 				changed = true
 			}
+
+			//验证人是否有需要分配的委托分红？
+			//todo:lvxioyi: 这个值，应该用完就清理，所以这里清理是不合适的。
+			//（其实这个逻辑重复了，在reward_plugin.go#EndBlock#HandleDelegatePerReward#PrepareNextEpoch中已经处理）
 			if canOld.CurrentEpochDelegateReward.Cmp(common.Big0) > 0 {
 				canOld.CleanCurrentEpochDelegateReward()
 				changed = true
@@ -2713,12 +2724,13 @@ func lazyCalcNodeTotalDelegateAmount(epoch uint64, can *staking.CandidateMutable
 	if can.IsEmpty() {
 		return false
 	}
+	//计算背的待生效托，转成有效委托的结算周期，到当前结算周期的个数。
 	changeAmountEpoch := can.DelegateEpoch
 	sub := epoch - uint64(changeAmountEpoch)
 	log.Debug("lazyCalcNodeTotalDelegateAmount before", "current epoch", epoch, "canMutable", can)
 
 	// If it is during the same hesitation period, short circuit
-	if sub < xcom.HesitateRatio() {
+	if sub < xcom.HesitateRatio() { //相当于在这个sub周期内，累计的待生效委托，是否可以转成有效委托。
 		return false
 	}
 	if can.DelegateTotalHes.Cmp(common.Big0) > 0 {
@@ -2764,6 +2776,7 @@ func lazyCalcDelegateAmount(epoch uint64, del *staking.Delegation) {
 }
 
 // Calculating Total Entrusted Income
+//计算委托奖励
 func calcDelegateIncome(epoch uint64, del *staking.Delegation, per []*reward.DelegateRewardPer) []reward.DelegateRewardReceipt {
 	if del.IsEmpty() {
 		return nil

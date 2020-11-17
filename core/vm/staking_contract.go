@@ -603,6 +603,9 @@ func (stkc *StakingContract) withdrewStaking(nodeId discover.NodeID) ([]byte, er
 		"", TxWithdrewCandidate, int(common.NoErr.Code)), nil
 }
 
+//用户委托节点，刚委托的金额，是待生效委托，需要过段时间才能转成有效委托。
+//有效委托才参与分红；但是待生效/生效委托，不影响用户撤回委托；
+//不同用户委托后，实际转成有效委托的等待时间可能不同，因为节点是定期把待生效委托转成生效委托的。
 func (stkc *StakingContract) delegate(typ uint16, nodeId discover.NodeID, amount *big.Int) ([]byte, error) {
 
 	txHash := stkc.Evm.StateDB.TxHash()
