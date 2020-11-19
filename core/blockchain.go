@@ -665,7 +665,7 @@ func (bc *BlockChain) GetReceiptsByHash(hash common.Hash) types.Receipts {
 	if number == nil {
 		return nil
 	}
-	return rawdb.ReadReceipts(bc.db, hash, *number)
+	return rawdb.ReadReceipts(bc.db, hash, *number, bc.Config())
 }
 
 // GetBlocksFromHash returns the block corresponding to hash and up to n-1 ancestors.
@@ -950,6 +950,8 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 
 	// Irrelevant of the canonical status, write the block itself to the database
 	rawdb.WriteBlock(bc.db, block)
+
+	triedb := bc.stateCache.TrieDB()
 	root, err := state.Commit(true)
 
 	if err != nil {
@@ -957,14 +959,12 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 		return NonStatTy, err
 	}
 
-	triedb := bc.stateCache.TrieDB()
-
 	// If we're running an archive node, always flush
 	if bc.cacheConfig.Disabled {
 		limit := common.StorageSize(bc.cacheConfig.TrieNodeLimit) * 1024 * 1024
 		oversize := false
 		if !(bc.cacheConfig.DBGCMpt && !bc.cacheConfig.DBDisabledGC.IsSet()) {
-			triedb.Reference(root, common.Hash{})
+			triedb.ReferenceVersion(root)
 			if err := triedb.Commit(root, false, false); err != nil {
 				log.Error("Commit to triedb error", "root", root)
 				return NonStatTy, err
@@ -973,7 +973,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 			nodes, _ := triedb.Size()
 			oversize = nodes > limit
 		} else {
-			triedb.Reference(root, common.Hash{})
+			triedb.ReferenceVersion(root)
 			triedb.DereferenceDB(currentBlock.Root())
 
 			if err := triedb.Commit(root, false, false); err != nil {
@@ -1323,7 +1323,7 @@ func (bc *BlockChain) reorg(oldBlock, newBlock *types.Block) error {
 			if number == nil {
 				return
 			}
-			receipts := rawdb.ReadReceipts(bc.db, hash, *number)
+			receipts := rawdb.ReadReceipts(bc.db, hash, *number, bc.Config())
 			for _, receipt := range receipts {
 				for _, log := range receipt.Logs {
 					del := *log
