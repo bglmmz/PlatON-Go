@@ -250,7 +250,7 @@ func genesisStakingData(genesisDataCollector *common.GenesisData, prevHash commo
 	return lastHash, nil
 }
 
-func genesisPluginState(g *Genesis, statedb *state.StateDB, snapDB snapshotdb.BaseDB, genesisIssue *big.Int) error {
+func genesisPluginState(genesisDataCollector *common.GenesisData, g *Genesis, statedb *state.StateDB, snapDB snapshotdb.BaseDB, genesisIssue *big.Int) error {
 
 	if g.Config.Cbft.ValidatorMode != common.PPOS_VALIDATOR_MODE {
 		log.Info("Init xxPlugin genesis statedb, validatorMode is not ppos")
