@@ -838,6 +838,13 @@ func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId dis
 		}
 	}
 
+	//lvxiaoyi:
+	//2020/11/30
+	//说明用户把当前节点上的委托都撤销了，并且委托用户在此节点的奖励都领取完了
+	if issueIncome.Sign() > 0 {
+		common.CollectWithdrawAllDelegationFromNode(blockNumber.Uint64(), txHash, from, common.NodeID(nodeId), issueIncome)
+	}
+
 	return txResultHandlerWithRes(vm.StakingContractAddr, stkc.Evm, "",
 		"", TxWithdrewDelegate, int(common.NoErr.Code), issueIncome), nil
 }

@@ -230,6 +230,13 @@ type RestrictingReleaseItem struct {
 	LackingAmount *big.Int `json:"lackingAmount,omitempty"`         //欠释放金额
 }
 
+type WithdrawAllDelegationFromNode struct {
+	TxHash          Hash     `json:"txHash,omitempty"`                    //委托用户撤销节点的全部委托的交易HASH
+	DelegateAddress Address  `json:"delegateAddress,omitempty,omitempty"` //委托用户地址
+	NodeID          NodeID   `json:"nodeId,omitempty"`                    //委托用户委托的节点ID
+	RewardAmount    *big.Int `json:"rewardAmount,omitempty"`              //委托用户从此节点获取的全部委托奖励
+}
+
 var ExeBlockDataCollector = make(map[uint64]*ExeBlockData)
 
 func PopExeBlockData(blockNumber uint64) *ExeBlockData {
@@ -264,8 +271,10 @@ type ExeBlockData struct {
 	StakingSetting                *StakingSetting                `json:"stakingSetting,omitempty"`
 	StakingFrozenItemList         []*StakingFrozenItem           `json:"stakingFrozenItemList,omitempty"`
 	RestrictingReleaseItemList    []*RestrictingReleaseItem      `json:"restrictingReleaseItemList,omitempty"`
-	EmbedTransferTxList           []*EmbedTransferTx             `json:"embedTransferTxList,omitempty"` //一个显式交易引起的内置转账交易：一般有两种情况：1是部署，或者调用合约时，带上了value，则这个value会转账给合约地址；2是调用合约，合约内部调用transfer()函数完成转账
-	EmbedContractTxList           []*EmbedContractTx             `json:"embedContractTxList,omitempty"` //一个显式交易引起的内置合约交易。这个显式交易显然也是个合约交易，在这个合约里，又调用了其他合约（包括内置合约）
+	EmbedTransferTxList           []*EmbedTransferTx             `json:"embedTransferTxList,omitempty"`           //一个显式交易引起的内置转账交易：一般有两种情况：1是部署，或者调用合约时，带上了value，则这个value会转账给合约地址；2是调用合约，合约内部调用transfer()函数完成转账
+	EmbedContractTxList           []*EmbedContractTx             `json:"embedContractTxList,omitempty"`           //一个显式交易引起的内置合约交易。这个显式交易显然也是个合约交易，在这个合约里，又调用了其他合约（包括内置合约）
+	WithdrawAllDelegationFromNode *WithdrawAllDelegationFromNode `json:"WithdrawAllDelegationFromNode,omitempty"` //当委托用户撤回节点的全部委托时，需要的统计信息（由于Alaya在运行中，只能兼容Alaya的bug）
+
 }
 
 func CollectAdditionalIssuance(blockNumber uint64, additionalIssuanceData *AdditionalIssuanceData) {
@@ -363,5 +372,15 @@ func CollectEmbedContractTx(blockNumber uint64, txHash Hash, from, contractAddre
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
 		log.Debug("CollectEmbedContractTx", "blockNumber", blockNumber, "txHash", txHash.Hex(), "contractAddress", from.Bech32(), "input", Bytes2Hex(input))
 		exeBlockData.EmbedContractTxList = append(exeBlockData.EmbedContractTxList, &EmbedContractTx{TxHash: txHash, From: from, ContractAddress: contractAddress, Input: Bytes2Hex(input)})
+	}
+}
+
+func CollectWithdrawAllDelegationFromNode(blockNumber uint64, txHash Hash, delegateAddress Address, nodeId NodeID, delegationRewardAmount *big.Int) {
+	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
+		log.Debug("CollectWithdrawAllDelegationFromNode", "blockNumber", blockNumber, "txHash", txHash.Hex(), "delegateAddress", delegateAddress.Bech32(), "nodeId", Bytes2Hex(nodeId[:]), "delegationRewardAmount", delegationRewardAmount)
+		if exeBlockData.WithdrawAllDelegationFromNode == nil {
+			amt := new(big.Int).Set(delegationRewardAmount)
+			exeBlockData.WithdrawAllDelegationFromNode = &WithdrawAllDelegationFromNode{TxHash: txHash, DelegateAddress: delegateAddress, NodeID: nodeId, RewardAmount: amt}
+		}
 	}
 }
