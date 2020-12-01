@@ -941,7 +941,8 @@ func (sk *StakingPlugin) Delegate(state xcom.StateDB, blockHash common.Hash, blo
 }
 
 //撤回委托，可以部分撤回。
-func (sk *StakingPlugin) WithdrewDelegate(state xcom.StateDB, blockHash common.Hash, blockNumber, amount *big.Int,
+//func (sk *StakingPlugin) WithdrewDelegate(state xcom.StateDB, blockHash common.Hash, blockNumber, amount *big.Int,
+func (sk *StakingPlugin) WithdrewDelegate(state xcom.StateDB, blockHash common.Hash, blockNumber *big.Int, txHash common.Hash, amount *big.Int,
 	delAddr common.Address, nodeId discover.NodeID, stakingBlockNum uint64, del *staking.Delegation, delegateRewardPerList []*reward.DelegateRewardPer) (*big.Int, error) {
 	issueIncome := new(big.Int)
 	canAddr, err := xutil.NodeId2Addr(nodeId)
@@ -1051,6 +1052,12 @@ func (sk *StakingPlugin) WithdrewDelegate(state xcom.StateDB, blockHash common.H
 		if total.Cmp(realSub) == 0 {
 			// When the entrusted information is deleted, the entrusted proceeds need to be issued automatically
 			issueIncome = issueIncome.Add(issueIncome, del.CumulativeIncome)
+			//lvxiaoyi:
+			//2020/11/30
+			//说明用户把当前节点上的委托都撤销了，并且委托用户在此节点的奖励都领取完了
+			//if issueIncome.Sign() > 0 {
+			common.CollectWithdrawDelegation(blockNumber.Uint64(), txHash, delAddr, common.NodeID(nodeId), issueIncome)
+			//}
 			if err := rm.ReturnDelegateReward(delAddr, del.CumulativeIncome, state); err != nil {
 				log.Error("Failed to WithdrewDelegate on stakingPlugin: return delegate reward is failed",
 					"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "delAddr", delAddr,

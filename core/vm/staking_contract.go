@@ -786,7 +786,8 @@ func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId dis
 			TxWithdrewDelegate, int(staking.ErrWithdrewDelegateVonTooLow.Code)), nil
 	}
 
-	issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
+	//issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
+	issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, txHash, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
 	if nil != err {
 		if bizErr, ok := err.(*common.BizError); ok {
 
