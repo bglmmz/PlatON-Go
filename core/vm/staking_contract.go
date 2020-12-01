@@ -825,7 +825,8 @@ func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId dis
 		return nil, nil
 	}
 
-	issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
+	//issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
+	issueIncome, err := stkc.Plugin.WithdrewDelegate(state, blockHash, blockNumber, txHash, amount, from, nodeId, stakingBlockNum, del, delegateRewardPerList)
 	if nil != err {
 		if bizErr, ok := err.(*common.BizError); ok {
 
@@ -837,14 +838,6 @@ func (stkc *StakingContract) withdrewDelegate(stakingBlockNum uint64, nodeId dis
 			return nil, err
 		}
 	}
-
-	//lvxiaoyi:
-	//2020/11/30
-	//说明用户把当前节点上的委托都撤销了，并且委托用户在此节点的奖励都领取完了
-	if issueIncome.Sign() > 0 {
-		common.CollectWithdrawDelegation(blockNumber.Uint64(), txHash, from, common.NodeID(nodeId), issueIncome)
-	}
-
 	return txResultHandlerWithRes(vm.StakingContractAddr, stkc.Evm, "",
 		"", TxWithdrewDelegate, int(common.NoErr.Code), issueIncome), nil
 }
