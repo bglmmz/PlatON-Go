@@ -116,7 +116,7 @@ func (rmp *RewardMgrPlugin) EndBlock(blockHash common.Hash, head *types.Header, 
 			return err
 		}
 	}
-
+	//委托用户奖励，包括接的（质押奖励+出块奖励）*委托分红比例
 	//分配出块奖励
 	if err := rmp.AllocatePackageBlock(blockHash, head, packageReward, state); err != nil {
 		return err
@@ -344,6 +344,8 @@ func (rmp *RewardMgrPlugin) HandleDelegatePerReward(blockHash common.Hash, block
 					"blockNumber", blockNumber, "blockHash", blockHash, "nodeID", verifier.NodeId.String(), "err", err)
 				return err
 			}
+			//为下个结算周期保存节点新的新信息（累计委托分红，新周期累计分红，新的分红比例）
+			//todo:lvxiaoyi，这个逻辑放到PrepareNextEpoch()中，作为一个整体逻辑
 			if err := rmp.stakingPlugin.db.SetCanMutableStore(blockHash, canAddr, verifier.CandidateMutable); err != nil {
 				log.Error("Failed to handleDelegatePerReward on rewardMgrPlugin: setCanMutableStore  failed",
 					"blockNumber", blockNumber, "blockHash", blockHash, "err", err, "mutable", verifier.CandidateMutable)
@@ -466,11 +468,11 @@ func (rmp *RewardMgrPlugin) CalDelegateRewardAndNodeReward(totalReward *big.Int,
 
 // 把这个周期每个质押节点的质押奖励，进行分配。
 // 1. 质押节点，直接从激励池拿到质押奖励。
-// 2. 委托用户，质押奖励从激励池发放到委托激励合约。
+// 2. 委托用户，给所有用户的委托奖励，是从激励池发放到委托激励合约的，在委托用户来领取时，再计算用户应该领多少委托奖励。
 // 3. 为每个质押节点，记录应该分配给委托用户的所有奖励。
 func (rmp *RewardMgrPlugin) rewardStakingByValidatorList(state xcom.StateDB, list []*staking.Candidate, reward *big.Int) error {
 	validatorNum := int64(len(list))
-	//每个结算周期的质押奖励时一定的，给所有质押节点来分。这里求每个质押节点能分到的质押奖励。
+	//每个结算周期的质押奖励是一定的，给所有质押节点来分。这里求每个质押节点能分到的质押奖励。
 	everyValidatorReward := new(big.Int).Div(reward, big.NewInt(validatorNum))
 
 	log.Debug("calculate validator staking reward", "validator length", validatorNum, "everyOneReward", everyValidatorReward)
