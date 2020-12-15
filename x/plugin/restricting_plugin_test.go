@@ -21,6 +21,11 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/PlatONnetwork/PlatON-Go/x/gov"
+
+	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+
 	"github.com/stretchr/testify/assert"
 
 	"github.com/PlatONnetwork/PlatON-Go/log"
@@ -588,5 +593,314 @@ func TestRestrictingGetRestrictingInfo(t *testing.T) {
 		t.Error(err)
 	}
 	assert.Equal(t, res.Balance.ToInt(), big.NewInt(6e18))
+
+}
+
+func TestRestrictingReturnLockFunds(t *testing.T) {
+	chain := mock.NewChain()
+	defer chain.SnapDB.Clear()
+
+	plugin := new(RestrictingPlugin)
+	plugin.log = log.Root()
+
+	from, to := addrArr[0], addrArr[1]
+	chain.StateDB.AddBalance(from, big.NewInt(7e18))
+
+	if err := chain.AddBlockWithSnapDB(true, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+
+		if err := gov.AddActiveVersion(params.FORKVERSION_0_14_0, header.Number.Uint64(), chain.StateDB); err != nil {
+			t.Error(err)
+		}
+		if err := gov.SetGovernParam(gov.ModuleRestricting, gov.KeyRestrictingMinimumAmount, "", "0", 0, hash); err != nil {
+			t.Error(err)
+		}
+
+		plans := make([]restricting.RestrictingPlan, 0)
+		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{20, big.NewInt(3e18)})
+		if err := plugin.AddRestrictingRecord(from, to, header.Number.Uint64(), hash, plans, chain.StateDB, header.Hash()); err != nil {
+			return err
+		}
+		return nil
+	}, nil, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	for i := 0; i <= int(xutil.CalcBlocksEachEpoch()+10); i++ {
+		if err := chain.AddBlockWithSnapDB(true, nil, nil, nil); err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.PledgeLockFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := chain.AddBlockWithSnapDB(true, nil, nil, nil); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.releaseRestricting(1, chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, nil, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.ReturnLockFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, info, _ := plugin.mustGetRestrictingInfoByDecode(chain.StateDB, to)
+	if info.NeedRelease.Cmp(common.Big0) != 0 {
+		t.Error("need release cal error")
+	}
+
+	if info.CachePlanAmount.Cmp(big.NewInt(3e18)) != 0 {
+		t.Error("CachePlanAmount  cal error")
+	}
+	if info.StakingAmount.Cmp(common.Big0) != 0 {
+		t.Error("StakingAmount  cal error")
+	}
+}
+
+func TestRestrictingForkPledgeLockFunds(t *testing.T) {
+	chain := mock.NewChain()
+	defer chain.SnapDB.Clear()
+
+	plugin := new(RestrictingPlugin)
+	plugin.log = log.Root()
+
+	from, to := addrArr[0], addrArr[1]
+	chain.StateDB.AddBalance(from, big.NewInt(7e18))
+
+	if err := chain.AddBlockWithSnapDB(true, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+
+		if err := gov.AddActiveVersion(uint32(0<<16|13<<8|0), header.Number.Uint64(), chain.StateDB); err != nil {
+			t.Error(err)
+		}
+		if err := gov.SetGovernParam(gov.ModuleRestricting, gov.KeyRestrictingMinimumAmount, "", "0", 0, hash); err != nil {
+			t.Error(err)
+		}
+
+		plans := make([]restricting.RestrictingPlan, 0)
+		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{20, big.NewInt(3e18)})
+		if err := plugin.AddRestrictingRecord(from, to, header.Number.Uint64(), hash, plans, chain.StateDB, header.Hash()); err != nil {
+			return err
+		}
+		return nil
+	}, nil, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	for i := 0; i <= int(xutil.CalcBlocksEachEpoch()+10); i++ {
+		if err := chain.AddBlockWithSnapDB(true, nil, nil, nil); err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.PledgeLockFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := chain.AddBlockWithSnapDB(true, nil, nil, nil); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.releaseRestricting(1, chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, nil, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.ReturnLockFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := gov.AddActiveVersion(uint32(0<<16|14<<8|0), header.Number.Uint64(), chain.StateDB); err != nil {
+			t.Error(err)
+		}
+		if err := plugin.PledgeLockFunds(to, big.NewInt(9e18), chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err == nil {
+		t.Error("the restricting should not enough")
+		return
+	}
+}
+
+func TestRestrictingSlashingRelease(t *testing.T) {
+	chain := mock.NewChain()
+	defer chain.SnapDB.Clear()
+
+	plugin := new(RestrictingPlugin)
+	plugin.log = log.Root()
+
+	from, to := addrArr[0], addrArr[1]
+	chain.StateDB.AddBalance(from, big.NewInt(9e18))
+	chain.StateDB.AddBalance(from, big.NewInt(9e18))
+
+	if err := chain.AddBlockWithSnapDB(true, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+
+		if err := gov.AddActiveVersion(uint32(0<<16|14<<8|0), header.Number.Uint64(), chain.StateDB); err != nil {
+			t.Error(err)
+		}
+		if err := gov.SetGovernParam(gov.ModuleRestricting, gov.KeyRestrictingMinimumAmount, "", "0", 0, hash); err != nil {
+			t.Error(err)
+		}
+
+		plans := make([]restricting.RestrictingPlan, 0)
+		plans = append(plans, restricting.RestrictingPlan{1, big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{2, big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{3, big.NewInt(3e18)})
+		plans = append(plans, restricting.RestrictingPlan{4, big.NewInt(3e18)})
+
+		if err := plugin.AddRestrictingRecord(from, to, header.Number.Uint64(), hash, plans, chain.StateDB, header.Hash()); err != nil {
+			return err
+		}
+		return nil
+	}, nil, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.PledgeLockFunds(to, big.NewInt(6e18), chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.releaseRestricting(1, chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.SlashingNotify(to, big.NewInt(5e18), chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.ReturnLockFunds(to, big.NewInt(1e18), chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.releaseRestricting(2, chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.releaseRestricting(3, chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+
+		plans := make([]restricting.RestrictingPlan, 0)
+		plans = append(plans, restricting.RestrictingPlan{5, big.NewInt(1e18)})
+		if err := plugin.AddRestrictingRecord(from, to, header.Number.Uint64(), hash, plans, chain.StateDB, header.Hash()); err != nil {
+			return err
+		}
+		return nil
+	}, nil, nil); err != nil {
+		t.Error(err)
+		return
+	}
+
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.releaseRestricting(4, chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+	if err := chain.AddBlockWithSnapDB(true, nil, func(hash common.Hash, header *types.Header, sdb snapshotdb.DB) error {
+		if err := plugin.releaseRestricting(5, chain.StateDB); err != nil {
+			return err
+		}
+		return nil
+	}, nil); err != nil {
+		t.Error(err)
+		return
+	}
+	_, info := plugin.getRestrictingInfo(chain.StateDB, to)
+	if info != nil {
+		t.Error("info must to be deleate")
+	}
 
 }
