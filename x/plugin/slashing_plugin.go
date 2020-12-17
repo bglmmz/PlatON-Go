@@ -22,11 +22,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/params"
-	"github.com/PlatONnetwork/PlatON-Go/rlp"
 	"math/big"
 	"strconv"
 	"sync"
+
+	"github.com/PlatONnetwork/PlatON-Go/x/stats"
+
+	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/PlatONnetwork/PlatON-Go/rlp"
 
 	"github.com/PlatONnetwork/PlatON-Go/x/gov"
 
@@ -214,15 +217,17 @@ func (sp *SlashingPlugin) BeginBlock(blockHash common.Hash, header *types.Header
 			// it means that there is no block,
 			// then the penalty is directly
 			if len(slashQueue) != 0 {
+				//begin of For Special Node
 				var slashNodeQueue staking.SlashNodeQueue
-				for _, slashItem := range slashQueue  {
+				for _, slashItem := range slashQueue {
 					snData := &staking.SlashNodeData{
-						NodeId          : slashItem.NodeId,
-						Amount : slashItem.Amount,
+						NodeId: slashItem.NodeId,
+						Amount: slashItem.Amount,
 					}
 					slashNodeQueue = append(slashNodeQueue, snData)
 				}
-				sp.setSlashData(header.Number.Uint64() ,slashNodeQueue)
+				sp.setSlashData(header.Number.Uint64(), slashNodeQueue)
+				//end of For Special Node
 				if err := stk.SlashCandidates(state, blockHash, header.Number.Uint64(), slashQueue...); nil != err {
 					log.Error("Failed to BeginBlock, call SlashCandidates is failed", "blockNumber", header.Number.Uint64(), "blockHash", blockHash.TerminalString(), "err", err)
 					return err
@@ -798,9 +803,10 @@ func calcSlashBlockRewards(db snapshotdb.DB, hash common.Hash, blockRewardAmount
 	return new(big.Int).Mul(newBlockReward, new(big.Int).SetUint64(blockRewardAmount)), nil
 }
 
-func (sp *SlashingPlugin)setSlashData(num uint64,snQueue staking.SlashNodeQueue) {
-	log.Debug("setSlashData","num", num,"len(snQueue)",len(snQueue))
-	if snQueue == nil || len(snQueue) == 0{
+//For Special Node
+func (sp *SlashingPlugin) setSlashData(num uint64, snQueue staking.SlashNodeQueue) {
+	log.Debug("setSlashData", "num", num, "len(snQueue)", len(snQueue))
+	if snQueue == nil || len(snQueue) == 0 {
 		return
 	}
 	log.Debug("setSlashData,su", snQueue)
@@ -809,5 +815,5 @@ func (sp *SlashingPlugin)setSlashData(num uint64,snQueue staking.SlashNodeQueue)
 		log.Error("wow,Failed to EncodeToBytes on slashingPlugin Confirmed When Election block", "err", err)
 	}
 	numStr := strconv.FormatUint(num, 10)
-	STAKING_DB.HistoryDB.Put([]byte(SlashName+numStr), data)
+	stats.Instance().Put([]byte(stats.SlashName+numStr), data)
 }

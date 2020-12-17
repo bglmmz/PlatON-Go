@@ -196,6 +196,7 @@ func (db *StakingDB) GetCanBaseStoreByIrr(addr common.NodeAddress) (*CandidateBa
 	return &can, nil
 }
 
+//lvxiaoyi: 和 GetCanBaseStore一样，todo:重构
 func (db *StakingDB) GetCanBaseStoreWithSuffix(blockHash common.Hash, suffix []byte) (*CandidateBase, error) {
 	key := CanBaseKeyBySuffix(suffix)
 
@@ -212,6 +213,7 @@ func (db *StakingDB) GetCanBaseStoreWithSuffix(blockHash common.Hash, suffix []b
 	return &can, nil
 }
 
+//lvxiaoyi: 和 GetCanBaseStoreByIrr一样，todo:重构
 func (db *StakingDB) GetCanBaseStoreByIrrWithSuffix(suffix []byte) (*CandidateBase, error) {
 	key := CanBaseKeyBySuffix(suffix)
 	canByte, err := db.getFromCommitted(key)
@@ -798,4 +800,3 @@ func (db *StakingDB) GetRoundAddrBoundary(blockHash common.Hash) (uint64, error)
 	}
 	return common.BytesToUint64(round), nil
 }
-

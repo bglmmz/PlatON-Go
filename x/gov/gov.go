@@ -554,6 +554,7 @@ func NotifyPunishedVerifiers(blockHash common.Hash, punishedVerifierMap map[disc
 	return nil
 }
 
+//lvxiaoyi:无用，可以去掉，todo:重构
 func ClearProcessingProposals(blockHash common.Hash, state xcom.StateDB) error {
 	if votingIDList, err := ListVotingProposalID(blockHash); err != nil {
 		return err

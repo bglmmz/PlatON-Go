@@ -67,6 +67,8 @@ var (
 func CanBaseKeyByAddr(addr common.NodeAddress) []byte {
 	return append(CanBaseKeyPrefix, addr.Bytes()...)
 }
+
+//lvxiaoyi: 和 CanBaseKeyByAddr 一样的，todo:重构
 func CanBaseKeyBySuffix(addr []byte) []byte {
 	return append(CanBaseKeyPrefix, addr...)
 }
@@ -75,6 +77,7 @@ func CanMutableKeyByAddr(addr common.NodeAddress) []byte {
 	return append(CanMutableKeyPrefix, addr.Bytes()...)
 }
 
+//lvxiaoyi: 和 CanMutableKeyByAddr 一样的，todo:重构
 func CanMutableKeyBySuffix(addr []byte) []byte {
 	return append(CanMutableKeyPrefix, addr...)
 }

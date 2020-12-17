@@ -17,8 +17,8 @@
 package vm
 
 import (
-	"errors"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math"
 	"math/big"
@@ -48,27 +48,27 @@ import (
 )
 
 const (
-	TxCreateStaking     = 1000
-	TxEditorCandidate   = 1001
-	TxIncreaseStaking   = 1002
-	TxWithdrewCandidate = 1003
-	TxDelegate          = 1004
-	TxWithdrewDelegate  = 1005
-	QueryVerifierList   = 1100
-	QueryValidatorList  = 1101
-	QueryCandidateList  = 1102
-	QueryRelateList     = 1103
-	QueryDelegateInfo   = 1104
-	QueryCandidateInfo  = 1105
+	TxCreateStaking           = 1000
+	TxEditorCandidate         = 1001
+	TxIncreaseStaking         = 1002
+	TxWithdrewCandidate       = 1003
+	TxDelegate                = 1004
+	TxWithdrewDelegate        = 1005
+	QueryVerifierList         = 1100
+	QueryValidatorList        = 1101
+	QueryCandidateList        = 1102
+	QueryRelateList           = 1103
+	QueryDelegateInfo         = 1104
+	QueryCandidateInfo        = 1105
 	QueryHistoryVerifierList  = 1106
-	QueryHistoryValidatorList  = 1107
-	QueryNodeVersion  = 1108
-	QueryHistoryReward  = 1109
-	QueryHistorySlash = 1110
-	QueryHistoryTrans = 1111
-	GetPackageReward    = 1200
-	GetStakingReward    = 1201
-	GetAvgPackTime      = 1202
+	QueryHistoryValidatorList = 1107
+	QueryNodeVersion          = 1108
+	QueryHistoryReward        = 1109
+	QueryHistorySlash         = 1110
+	QueryHistoryTrans         = 1111
+	GetPackageReward          = 1200
+	GetStakingReward          = 1201
+	GetAvgPackTime            = 1202
 )
 
 const (
@@ -111,18 +111,18 @@ func (stkc *StakingContract) FnSigns() map[uint16]interface{} {
 		TxWithdrewDelegate:  stkc.withdrewDelegate,
 
 		// Get
-		QueryVerifierList:  stkc.getVerifierList,
-		QueryValidatorList: stkc.getValidatorList,
-		QueryCandidateList: stkc.getCandidateList,
-		QueryRelateList:    stkc.getRelatedListByDelAddr,
-		QueryDelegateInfo:  stkc.getDelegateInfo,
-		QueryCandidateInfo: stkc.getCandidateInfo,
-		QueryHistoryVerifierList: stkc.getHistoryVerifierList,
+		QueryVerifierList:         stkc.getVerifierList,
+		QueryValidatorList:        stkc.getValidatorList,
+		QueryCandidateList:        stkc.getCandidateList,
+		QueryRelateList:           stkc.getRelatedListByDelAddr,
+		QueryDelegateInfo:         stkc.getDelegateInfo,
+		QueryCandidateInfo:        stkc.getCandidateInfo,
+		QueryHistoryVerifierList:  stkc.getHistoryVerifierList,
 		QueryHistoryValidatorList: stkc.getHistoryValidatorList,
-		QueryNodeVersion: stkc.getNodeVersion,
-		QueryHistoryReward: stkc.getHistoryReward,
-		QueryHistorySlash: stkc.getHistorySlash,
-		QueryHistoryTrans: stkc.QueryHistoryTrans,
+		QueryNodeVersion:          stkc.getNodeVersion,
+		QueryHistoryReward:        stkc.getHistoryReward,
+		QueryHistorySlash:         stkc.getHistorySlash,
+		QueryHistoryTrans:         stkc.QueryHistoryTrans,
 
 		GetPackageReward: stkc.getPackageReward,
 		GetStakingReward: stkc.getStakingReward,
@@ -887,6 +887,7 @@ func (stkc *StakingContract) getVerifierList() ([]byte, error) {
 		arr, nil), nil
 }
 
+//For Special Node
 func (stkc *StakingContract) getHistoryVerifierList(blockNumber *big.Int) ([]byte, error) {
 
 	blockHash := stkc.Evm.BlockHash
@@ -925,6 +926,7 @@ func (stkc *StakingContract) getValidatorList() ([]byte, error) {
 		arr, nil), nil
 }
 
+//For Special Node
 func (stkc *StakingContract) getHistoryValidatorList(blockNumber *big.Int) ([]byte, error) {
 	blockHash := stkc.Evm.BlockHash
 
@@ -943,6 +945,7 @@ func (stkc *StakingContract) getHistoryValidatorList(blockNumber *big.Int) ([]by
 		arr, nil), nil
 }
 
+//For Special Node
 func (stkc *StakingContract) getHistoryReward(blockNumber *big.Int) ([]byte, error) {
 	blockHash := stkc.Evm.BlockHash
 
@@ -956,6 +959,7 @@ func (stkc *StakingContract) getHistoryReward(blockNumber *big.Int) ([]byte, err
 		reward, nil), nil
 }
 
+//For Special Node
 func (stkc *StakingContract) getHistorySlash(blockNumber *big.Int) ([]byte, error) {
 	blockHash := stkc.Evm.BlockHash
 
@@ -969,6 +973,7 @@ func (stkc *StakingContract) getHistorySlash(blockNumber *big.Int) ([]byte, erro
 		slashData, nil), nil
 }
 
+//For Special Node
 func (stkc *StakingContract) QueryHistoryTrans(blockNumber *big.Int) ([]byte, error) {
 	blockHash := stkc.Evm.BlockHash
 
@@ -982,6 +987,7 @@ func (stkc *StakingContract) QueryHistoryTrans(blockNumber *big.Int) ([]byte, er
 		transData, nil), nil
 }
 
+//For Special Node
 func (stkc *StakingContract) getNodeVersion() ([]byte, error) {
 
 	blockNumber := stkc.Evm.BlockNumber

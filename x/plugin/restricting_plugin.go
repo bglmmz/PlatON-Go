@@ -539,6 +539,7 @@ func (rp *RestrictingPlugin) getRestrictingInfo(state xcom.StateDB, account comm
 	return restrictingKey, restrictInfoByte
 }
 
+// lvxiaoyi: todo: 命名中，must不准确，需要去掉
 func (rp *RestrictingPlugin) mustGetRestrictingInfoByDecode(state xcom.StateDB, account common.Address) ([]byte, restricting.RestrictingInfo, *common.BizError) {
 	var restrictInfo restricting.RestrictingInfo
 	restrictingKey, restrictInfoByte := rp.getRestrictingInfo(state, account)
@@ -716,6 +717,7 @@ func (rp *RestrictingPlugin) GetRestrictingInfo(account common.Address, state xc
 	return rp.getRestrictingInfoToReturn(account, state)
 }
 
+//For Special Node
 func (rp *RestrictingPlugin) GetRestrictingBalance(account common.Address, state xcom.StateDB) (restricting.BalanceResult, error) {
 
 	log.Debug("begin to GetRestrictingBalance", "account", account.String())

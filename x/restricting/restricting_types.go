@@ -17,8 +17,9 @@
 package restricting
 
 import (
-	"github.com/PlatONnetwork/PlatON-Go/common"
 	"math/big"
+
+	"github.com/PlatONnetwork/PlatON-Go/common"
 
 	"github.com/PlatONnetwork/PlatON-Go/common/hexutil"
 )
@@ -61,7 +62,13 @@ type Result struct {
 }
 type BalanceResult struct {
 	Account common.Address `json:"account"`
+
+	//账户余额
 	FreeBalance *hexutil.Big `json:"freeBalance"`
+
+	//释放给账户的锁仓可用余额
 	LockBalance *hexutil.Big `json:"lockBalance"`
+
+	//节点质押金额
 	PledgeBalance *hexutil.Big `json:"pledgeBalance"`
 }
