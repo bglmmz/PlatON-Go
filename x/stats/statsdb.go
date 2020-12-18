@@ -125,6 +125,9 @@ func Instance() *StatsDB {
 }
 
 func openLevelDB(cache int, handles int) (*leveldb.DB, error) {
+	if len(dbpath) == 0 {
+		dbpath = DBPath
+	}
 	db, err := leveldb.OpenFile(dbpath, &opt.Options{
 		OpenFilesCacheCapacity: handles,
 		BlockCacheCapacity:     cache / 2 * opt.MiB,

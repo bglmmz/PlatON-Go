@@ -28,12 +28,12 @@ import (
 
 	cli "gopkg.in/urfave/cli.v1"
 
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-
 	"github.com/PlatONnetwork/PlatON-Go/cmd/utils"
+	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
 	"github.com/PlatONnetwork/PlatON-Go/eth"
 	"github.com/PlatONnetwork/PlatON-Go/node"
 	"github.com/PlatONnetwork/PlatON-Go/params"
+	"github.com/PlatONnetwork/PlatON-Go/x/stats"
 	"github.com/naoina/toml"
 )
 
@@ -180,6 +180,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 
 	snapshotdb.SetDBPathWithNode(stack.ResolvePath(snapshotdb.DBPath))
 
+	stats.SetDBPath(stack.ResolvePath(stats.DBPath))
 	utils.RegisterEthService(stack, &cfg.Eth)
 
 	// Add the Ethereum Stats daemon if requested.
@@ -192,7 +193,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 func makeFullNodeForCBFT(ctx *cli.Context) (*node.Node, platonConfig) {
 	stack, cfg := makeConfigNode(ctx)
 	snapshotdb.SetDBPathWithNode(stack.ResolvePath(snapshotdb.DBPath))
-
+	stats.SetDBPath(stack.ResolvePath(stats.DBPath))
 	utils.RegisterEthService(stack, &cfg.Eth)
 
 	// Add the Ethereum Stats daemon if requested.
