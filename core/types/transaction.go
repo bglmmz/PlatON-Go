@@ -62,7 +62,7 @@ type txdata struct {
 
 	// This is only used when marshaling to JSON.
 	Hash *common.Hash    `json:"hash" rlp:"-"`
-	From *common.Address `json:"hash" rlp:"-"`
+	From *common.Address `json:"from" rlp:"-"`
 }
 
 type txdataMarshaling struct {
