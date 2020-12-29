@@ -49,22 +49,21 @@ type FixIssue1625Plugin struct {
 	sdb snapshotdb.DB
 }
 
-type issue1625Accounts struct {
-	addr   common.Address
-	amount *big.Int
-}
-
 func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, state xcom.StateDB) error {
-	for _, issue1625Account := range []issue1625Accounts{} {
-		restrictingKey, restrictInfo, err := rt.getRestrictingInfoByDecode(state, issue1625Account.addr)
+	accounts, err := NewIssue1625Accounts()
+	if err != nil {
+		return err
+	}
+	for _, issue1625Account := range accounts {
+		restrictingKey, restrictInfo, err := rt.getRestrictingInfoByDecode(state, issue1625Account.Address)
 		if err != nil {
 			return err
 		}
-		log.Debug("fix issue 1625 begin", "account", issue1625Account.addr, "fix amount", issue1625Account.amount, "info", restrictInfo)
+		log.Debug("fix issue 1625 begin", "account", issue1625Account.Address, "fix amount", issue1625Account.Amount, "info", restrictInfo)
 
-		actualRestrictingAmount := new(big.Int).Sub(restrictInfo.CachePlanAmount, issue1625Account.amount)
+		actualRestrictingAmount := new(big.Int).Sub(restrictInfo.CachePlanAmount, issue1625Account.Amount)
 		if actualRestrictingAmount.Cmp(common.Big0) < 0 {
-			log.Error("seems not good here", "info", restrictInfo, "amount", issue1625Account.amount, "account", issue1625Account.addr)
+			log.Error("seems not good here", "info", restrictInfo, "amount", issue1625Account.Amount, "account", issue1625Account.Address)
 			return fmt.Errorf("the account restrictInfo seems not right")
 		}
 
@@ -72,30 +71,30 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 		if wrongStakingAmount.Cmp(common.Big0) > 0 {
 			//If the user uses the wrong amount,Roll back the unused part first
 			//优先回滚没有使用的那部分锁仓余额
-			wrongNoUseAmount := new(big.Int).Sub(issue1625Account.amount, wrongStakingAmount)
+			wrongNoUseAmount := new(big.Int).Sub(issue1625Account.Amount, wrongStakingAmount)
 			restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, wrongNoUseAmount)
 			rt.storeRestrictingInfo(state, restrictingKey, restrictInfo)
 			log.Debug("fix issue 1625  at no use", "no use", wrongNoUseAmount)
 			//roll back del,回滚委托
-			if err := a.rollBackDel(blockHash, head.Number, issue1625Account.addr, wrongStakingAmount, state); err != nil {
+			if err := a.rollBackDel(blockHash, head.Number, issue1625Account.Address, wrongStakingAmount, state); err != nil {
 				return err
 			}
 			//roll back staking,回滚质押
 			if wrongStakingAmount.Cmp(common.Big0) > 0 {
-				if err := a.rollBackStaking(blockHash, head.Number, issue1625Account.addr, wrongStakingAmount, state); err != nil {
+				if err := a.rollBackStaking(blockHash, head.Number, issue1625Account.Address, wrongStakingAmount, state); err != nil {
 					return err
 				}
 			}
 		} else {
 			//当用户没有使用因为漏洞产生的钱，直接减去漏洞的钱就是正确的余额
-			restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, issue1625Account.amount)
+			restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, issue1625Account.Amount)
 			if restrictInfo.StakingAmount.Cmp(common.Big0) == 0 &&
 				len(restrictInfo.ReleaseList) == 0 && restrictInfo.CachePlanAmount.Cmp(common.Big0) == 0 {
 				state.SetState(vm.RestrictingContractAddr, restrictingKey, []byte{})
-				log.Debug("fix issue 1625 finished,set info empty", "account", issue1625Account.addr, "fix amount", issue1625Account.amount)
+				log.Debug("fix issue 1625 finished,set info empty", "account", issue1625Account.Address, "fix amount", issue1625Account.Amount)
 			} else {
 				rt.storeRestrictingInfo(state, restrictingKey, restrictInfo)
-				log.Debug("fix issue 1625 finished", "account", issue1625Account.addr, "info", restrictInfo, "fix amount", issue1625Account.amount)
+				log.Debug("fix issue 1625 finished", "account", issue1625Account.Address, "info", restrictInfo, "fix amount", issue1625Account.Amount)
 			}
 		}
 	}

@@ -608,6 +608,10 @@ var (
 		EnvVar: "",
 		Value:  eth.DefaultConfig.VmTimeoutDuration,
 	}
+	Issue1625Config = cli.StringFlag{
+		Name:  "issue1625",
+		Usage: "The accounts of issue 1625",
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
