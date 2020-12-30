@@ -29,7 +29,6 @@ func NewIssue1625Accounts() ([]issue1625Accounts, error) {
 	}*/
 
 	var tmp = [][]string{
-		{"atp1877qqpl77a4293l9t703wz980rxsvnc69mwn6w", "10000000000000000000000"},
 		{"atp1k0aumpg2r6cawq4uqejpfw6m3n5v877pl4vgkj", "10000000000000000000000"},
 		{"atp1des5cqfsrsd6nyyp6h6ekghv5xdw0crqrppl8u", "10000000000000000000000"},
 		{"atp1kqyfg9ju4fppl090xwf5nxjkg7zj7yc3r43r4x", "10000000000000000000000"},
