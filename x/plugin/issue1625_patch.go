@@ -55,7 +55,7 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 		return err
 	}
 	for _, issue1625Account := range accounts {
-		restrictingKey, restrictInfo, err := rt.getRestrictingInfoByDecode(state, issue1625Account.Address)
+		restrictingKey, restrictInfo, err := rt.mustGetRestrictingInfoByDecode(state, issue1625Account.Address)
 		if err != nil {
 			return err
 		}
