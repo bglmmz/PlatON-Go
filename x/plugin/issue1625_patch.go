@@ -72,9 +72,12 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 			//If the user uses the wrong amount,Roll back the unused part first
 			//优先回滚没有使用的那部分锁仓余额
 			wrongNoUseAmount := new(big.Int).Sub(issue1625Account.Amount, wrongStakingAmount)
-			restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, wrongNoUseAmount)
-			rt.storeRestrictingInfo(state, restrictingKey, restrictInfo)
-			log.Debug("fix issue 1625  at no use", "no use", wrongNoUseAmount)
+			if wrongNoUseAmount.Cmp(common.Big0) > 0 {
+				restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, wrongNoUseAmount)
+				rt.storeRestrictingInfo(state, restrictingKey, restrictInfo)
+				log.Debug("fix issue 1625  at no use", "no use", wrongNoUseAmount)
+			}
+
 			//roll back del,回滚委托
 			if err := a.rollBackDel(blockHash, head.Number, issue1625Account.Address, wrongStakingAmount, state); err != nil {
 				return err
@@ -657,12 +660,6 @@ func (d issue1625AccountDelInfos) Less(i, j int) bool {
 func (d issue1625AccountDelInfos) LessDelByEpoch(i, j int) bool {
 	if d[i].del.DelegateEpoch > d[j].del.DelegateEpoch {
 		return true
-	} else if d[i].del.DelegateEpoch == d[j].del.DelegateEpoch {
-		if bytes.Compare(d[i].candidate.NodeId.Bytes(), d[j].candidate.NodeId.Bytes()) < 0 {
-			return true
-		} else {
-			return false
-		}
 	} else {
 		return false
 	}
