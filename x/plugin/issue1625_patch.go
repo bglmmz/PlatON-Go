@@ -22,8 +22,9 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/PlatONnetwork/PlatON-Go/log"
 	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
+
+	"github.com/PlatONnetwork/PlatON-Go/log"
 
 	"github.com/PlatONnetwork/PlatON-Go/common/vm"
 
@@ -68,8 +69,11 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 			return fmt.Errorf("the account restrictInfo seems not right")
 		}
 
+		//实际用于（质押+委托）的挪用金额 = 锁仓当前用于（质押+委托）的金额 - 锁仓实际可用金额
 		wrongStakingAmount := new(big.Int).Sub(restrictInfo.StakingAmount, actualRestrictingAmount)
 		if wrongStakingAmount.Cmp(common.Big0) > 0 {
+			//用于（质押+委托）的锁仓金额，必须 <= 锁仓实际可用金额，现在是>了
+			//说明有挪用金额用于质押或者委托
 			//If the user uses the wrong amount,Roll back the unused part first
 			//优先回滚没有使用的那部分锁仓余额
 			wrongNoUseAmount := new(big.Int).Sub(issue1625Account.Amount, wrongStakingAmount)
@@ -105,6 +109,15 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 	return nil
 }
 
+// 委托回滚处理：
+//1.委托的节点已经完全退出,并且委托的时间靠后
+//2.委托的节点处于解质押状态,并且委托的时间靠后
+//3.根据委托节点的分红比例从小到大排序，如果委托比例相同，根据节点id从小到大排序
+// param: hash			区块hash
+// param: blockNumber 	区块高度
+// param: account 		账户
+// param: amount 		实际用来委托的挪用的资金（<=统计出的挪用总金额）
+// param: state
 func (a *FixIssue1625Plugin) rollBackDel(hash common.Hash, blockNumber *big.Int, account common.Address, amount *big.Int, state xcom.StateDB) error {
 
 	delAddrByte := account.Bytes()
@@ -124,6 +137,7 @@ func (a *FixIssue1625Plugin) rollBackDel(hash common.Hash, blockNumber *big.Int,
 
 	var dels issue1625AccountDelInfos
 
+	//遍历用户的所有委托
 	for iter.Valid(); iter.Next(); {
 		var del staking.Delegation
 		if err := rlp.DecodeBytes(iter.Value(), &del); nil != err {
@@ -151,7 +165,9 @@ func (a *FixIssue1625Plugin) rollBackDel(hash common.Hash, blockNumber *big.Int,
 		}
 		delInfo.nodeID = nodeID
 		delInfo.stakingBlock = stakingBlock
+		//来自锁仓的委托金额
 		delInfo.originRestrictingAmount = new(big.Int).Add(del.RestrictingPlan, del.RestrictingPlanHes)
+		//来自用户钱包的委托金额
 		delInfo.originFreeAmount = new(big.Int).Add(del.Released, del.ReleasedHes)
 		delInfo.canAddr = canAddr
 		//如果该委托没有用锁仓，无需回滚
@@ -174,6 +190,13 @@ func (a *FixIssue1625Plugin) rollBackDel(hash common.Hash, blockNumber *big.Int,
 	return nil
 }
 
+//
+//
+// param: hash
+// param: blockNumber
+// param: account
+// param: amount	实际用来质押的挪用的资金（<=统计出的挪用总金额）
+// param: state
 func (a *FixIssue1625Plugin) rollBackStaking(hash common.Hash, blockNumber *big.Int, account common.Address, amount *big.Int, state xcom.StateDB) error {
 
 	iter := a.sdb.Ranking(hash, staking.CanBaseKeyPrefix, 0)
@@ -216,6 +239,8 @@ func (a *FixIssue1625Plugin) rollBackStaking(hash common.Hash, blockNumber *big.
 	epoch := xutil.CalculateEpoch(blockNumber.Uint64())
 
 	sort.Sort(stakings)
+
+	//遍历质押信息
 	for i := 0; i < len(stakings); i++ {
 		if err := stakings[i].handleStaking(hash, blockNumber, epoch, amount, state, stakingdb); err != nil {
 			return err
@@ -244,21 +269,49 @@ type issue1625AccountStakingInfo struct {
 }
 
 //回退处于退出期的质押信息
-func (a *issue1625AccountStakingInfo) handleExistStaking(hash common.Hash, epoch uint64, rollBackAmount *big.Int, state xcom.StateDB, stdb *staking.StakingDB) error {
+//
+//
+// param: hash
+// param: epoch
+// param: rollBackAmount	实际用于（质押+委托）的挪用金额
+// param: state
+// param: stdb
+func (a *issue1625AccountStakingInfo) handleExistStaking(hash common.Hash, blockNumber *big.Int, epoch uint64, rollBackAmount *big.Int, state xcom.StateDB, stdb *staking.StakingDB) error {
+	//stats
+	fixStaking := new(common.FixStaking)
+	fixStaking.NodeID = common.NodeID(a.candidate.NodeId)
+	fixStaking.StakingBlockNumber = a.candidate.StakingBlockNum
+
 	if a.originRestrictingAmount.Cmp(rollBackAmount) >= 0 {
 		if err := rt.ReturnWrongLockFunds(a.candidate.StakingAddress, rollBackAmount, state); nil != err {
 			return err
 		}
+		//a.candidate.RestrictingPlan 中可能包含多个锁仓计划的资金，所以，a.candidate.RestrictingPlan >= rollBackAmount
 		a.candidate.RestrictingPlan = new(big.Int).Sub(a.candidate.RestrictingPlan, rollBackAmount)
 		rollBackAmount.SetInt64(0)
+
+		//stats
+		fixStaking.ImproperValidRestrictingAmount = rollBackAmount
+
 	} else {
 		if err := rt.ReturnWrongLockFunds(a.candidate.StakingAddress, a.originRestrictingAmount, state); nil != err {
 			return err
 		}
+
+		//stats
+		// a.originRestrictingAmount == a.candidate.RestrictingPlan()
+		fixStaking.ImproperValidRestrictingAmount = a.originRestrictingAmount
+
 		a.candidate.RestrictingPlan = new(big.Int).SetInt64(0)
 		a.candidate.RestrictingPlanHes = new(big.Int).SetInt64(0)
 		rollBackAmount.Sub(rollBackAmount, a.originRestrictingAmount)
 	}
+
+	//stats
+	//由于处于锁定期，所以只需要先调整当前质押的挪用的锁仓金额，从质押合约->锁仓合约，然后等待冻结期结束即可;
+	//跟踪系统也是如此调整
+	fixStaking.FurtherOperation = "NOP"
+	common.CollectFixStaking(blockNumber.Uint64(), a.candidate.StakingAddress, fixStaking)
 
 	a.candidate.StakingEpoch = uint32(epoch)
 
@@ -295,23 +348,40 @@ func (a *issue1625AccountStakingInfo) calImproperRestrictingAmount(rollBackAmoun
 	return improperRestrictingAmount
 }
 
-func (a *issue1625AccountStakingInfo) fixCandidateInfo(improperRestrictingAmount *big.Int) {
+func (a *issue1625AccountStakingInfo) fixCandidateInfo(improperRestrictingAmount *big.Int, fixStaking *common.FixStaking) {
 	//修正质押信息
 	if a.candidate.RestrictingPlanHes.Cmp(improperRestrictingAmount) >= 0 {
 		a.candidate.RestrictingPlanHes.Sub(a.candidate.RestrictingPlanHes, improperRestrictingAmount)
+
+		//stats, 记录犹豫期的锁仓金额，应该退回的数量
+		fixStaking.ImproperHesitatingRestrictingAmount = improperRestrictingAmount
 	} else {
 		hes := new(big.Int).Set(a.candidate.RestrictingPlanHes)
 		a.candidate.RestrictingPlanHes = new(big.Int)
 		a.candidate.RestrictingPlan = new(big.Int).Sub(a.candidate.RestrictingPlan, new(big.Int).Sub(improperRestrictingAmount, hes))
+
+		//stats, 记录犹豫期的，以及有效锁仓金额，应该退回的数量
+		fixStaking.ImproperHesitatingRestrictingAmount = hes
+		fixStaking.ImproperValidRestrictingAmount = new(big.Int).Sub(improperRestrictingAmount, hes)
 	}
 	a.candidate.SubShares(improperRestrictingAmount)
 }
 
 //减持质押
-func (a *issue1625AccountStakingInfo) decreaseStaking(hash common.Hash, epoch uint64, rollBackAmount *big.Int, state xcom.StateDB) error {
+func (a *issue1625AccountStakingInfo) decreaseStaking(hash common.Hash, blockNumber *big.Int, epoch uint64, rollBackAmount *big.Int, state xcom.StateDB) error {
 	if err := stk.db.DelCanPowerStore(hash, a.candidate); nil != err {
 		return err
 	}
+
+	//stats
+	//要先调整当前质押的挪用的锁仓金额，从质押合约->锁仓合约，然后走减持质押流程，这是个新的流程。
+	//跟踪系统也是如此调整
+	fixStaking := new(common.FixStaking)
+	fixStaking.NodeID = common.NodeID(a.candidate.NodeId)
+	fixStaking.StakingBlockNumber = a.candidate.StakingBlockNum
+	fixStaking.FurtherOperation = "REDUCE"
+
+	lazyCalcStakeAmount(epoch, a.candidate.CandidateMutable)
 
 	//计算此次需要回退的钱
 	improperRestrictingAmount := a.calImproperRestrictingAmount(rollBackAmount)
@@ -322,7 +392,11 @@ func (a *issue1625AccountStakingInfo) decreaseStaking(hash common.Hash, epoch ui
 	}
 
 	//修正质押信息
-	a.fixCandidateInfo(improperRestrictingAmount)
+	//a.fixCandidateInfo(improperRestrictingAmount)
+	a.fixCandidateInfo(improperRestrictingAmount, fixStaking)
+
+	//stats
+	common.CollectFixStaking(blockNumber.Uint64(), a.candidate.StakingAddress, fixStaking)
 
 	a.candidate.StakingEpoch = uint32(epoch)
 
@@ -343,6 +417,14 @@ func (a *issue1625AccountStakingInfo) withdrewStaking(hash common.Hash, epoch ui
 		return err
 	}
 
+	//stats
+	//要先调整当前质押的挪用的锁仓金额，从质押合约->锁仓合约，然后走解除质押流程，并锁定一个结算周期。
+	//跟踪系统也是如此调整
+	fixStaking := new(common.FixStaking)
+	fixStaking.NodeID = common.NodeID(a.candidate.NodeId)
+	fixStaking.StakingBlockNumber = a.candidate.StakingBlockNum
+	fixStaking.FurtherOperation = "WITHDRAW"
+
 	//计算此次需要回退的钱
 	improperRestrictingAmount := a.calImproperRestrictingAmount(rollBackAmount)
 
@@ -352,7 +434,12 @@ func (a *issue1625AccountStakingInfo) withdrewStaking(hash common.Hash, epoch ui
 	}
 
 	//修正质押信息
-	a.fixCandidateInfo(improperRestrictingAmount)
+	//a.fixCandidateInfo(improperRestrictingAmount)
+	//stats
+	a.fixCandidateInfo(improperRestrictingAmount, fixStaking)
+
+	//stats
+	common.CollectFixStaking(blockNumber.Uint64(), a.candidate.StakingAddress, fixStaking)
 
 	//开始解质押
 	//回退犹豫期的自由金
@@ -398,13 +485,21 @@ func (a *issue1625AccountStakingInfo) withdrewStaking(hash common.Hash, epoch ui
 	return nil
 }
 
+//
+//
+// param: hash
+// param: blockNumber
+// param: epoch
+// param: rollBackAmount	实际用于（质押+委托）的挪用金额
+// param: state
+// param: stdb
 func (a *issue1625AccountStakingInfo) handleStaking(hash common.Hash, blockNumber *big.Int, epoch uint64, rollBackAmount *big.Int, state xcom.StateDB, stdb *staking.StakingDB) error {
 	lazyCalcStakeAmount(epoch, a.candidate.CandidateMutable)
 	log.Debug("fix issue 1625 for staking begin", "account", a.candidate.StakingAddress, "nodeID", a.candidate.NodeId.TerminalString(), "return", rollBackAmount, "restrictingPlan",
 		a.candidate.RestrictingPlan, "restrictingPlanRes", a.candidate.RestrictingPlanHes, "released", a.candidate.Released, "releasedHes", a.candidate.ReleasedHes, "share", a.candidate.Shares)
 	if a.candidate.Status.IsWithdrew() {
 		//已经解质押,节点处于退出锁定期
-		if err := a.handleExistStaking(hash, epoch, rollBackAmount, state, stdb); err != nil {
+		if err := a.handleExistStaking(hash, blockNumber, epoch, rollBackAmount, state, stdb); err != nil {
 			return err
 		}
 		log.Debug("fix issue 1625 for staking end", "account", a.candidate.StakingAddress, "nodeID", a.candidate.NodeId.TerminalString(), "status", a.candidate.Status, "return",
@@ -419,7 +514,7 @@ func (a *issue1625AccountStakingInfo) handleStaking(hash common.Hash, blockNumbe
 			}
 		} else {
 			//减持质押
-			if err := a.decreaseStaking(hash, epoch, rollBackAmount, state); err != nil {
+			if err := a.decreaseStaking(hash, blockNumber, epoch, rollBackAmount, state); err != nil {
 				return err
 			}
 		}
@@ -461,16 +556,22 @@ func (d issue1625AccountStakingInfos) LessByStakingBlockNum(i, j int) bool {
 }
 
 type issue1625AccountDelInfo struct {
-	del       *staking.Delegation
-	candidate *staking.Candidate
+	del       *staking.Delegation //委托信息
+	candidate *staking.Candidate  //节点信息
 	//use for get staking
-	stakingBlock uint64
-	canAddr      common.NodeAddress
+	stakingBlock uint64             //节点质押快高
+	canAddr      common.NodeAddress //节点地址
 	nodeID       discover.NodeID
 
 	originRestrictingAmount, originFreeAmount *big.Int
 }
 
+//
+// 检查当前委托，再退回挪用金额后，剩余委托金额是否满足最低要求。如果不满足最低阈值，则需要撤回此委托。
+// param: hash				区块hash
+// param: blockNumber		区块高度
+// param: rollBackAmount	挪用的锁仓总金额
+// return:
 func (a *issue1625AccountDelInfo) shouldWithdrewDel(hash common.Hash, blockNumber *big.Int, rollBackAmount *big.Int) bool {
 	leftTotalDelgateAmount := new(big.Int)
 	if rollBackAmount.Cmp(a.originRestrictingAmount) >= 0 {
@@ -484,11 +585,25 @@ func (a *issue1625AccountDelInfo) shouldWithdrewDel(hash common.Hash, blockNumbe
 	return true
 }
 
+//
+// 处理委托用户在一个节点上的委托
+// param: hash				区块hash
+// param: blockNumber		区块高度
+// param: epoch				当前epoch
+// param: delAddr			委托用户地址
+// param: rollBackAmount	用于（质押+委托）的挪用总金额
+// param: state
+// param: stdb
+// return:
 func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *big.Int, epoch uint64, delAddr common.Address, rollBackAmount *big.Int, state xcom.StateDB, stdb *staking.StakingDB) error {
+	//当前委托中，挪用的锁仓金额
 	improperRestrictingAmount := new(big.Int)
+
 	if rollBackAmount.Cmp(a.originRestrictingAmount) >= 0 {
+		//如果挪用总金额 >= 委托中来自锁仓的金额，则认为来自锁仓的金额都是挪用金额
 		improperRestrictingAmount = new(big.Int).Set(a.originRestrictingAmount)
 	} else {
+		//如果挪用总金额 < 委托中来自锁仓的金额，则认为来自锁仓的金额，只有部分是来自挪用金额
 		improperRestrictingAmount = new(big.Int).Set(rollBackAmount)
 	}
 	log.Debug("fix issue 1625 for delegate begin", "account", delAddr, "candidate", a.nodeID.String(), "currentReturn", improperRestrictingAmount, "leftReturn", rollBackAmount, "restrictingPlan", a.del.RestrictingPlan, "restrictingPlanRes", a.del.RestrictingPlanHes,
@@ -496,6 +611,13 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 	if a.candidate.IsNotEmpty() {
 		log.Debug("fix issue 1625 for delegate ,can begin info", "account", delAddr, "candidate", a.nodeID.String(), "share", a.candidate.Shares, "candidate.del", a.candidate.DelegateTotal, "candidate.delhes", a.candidate.DelegateTotalHes, "canValid", a.candidate.IsValid())
 	}
+
+	//stats
+	//fix委托，构造调整记录
+	fixDelegation := new(common.FixDelegation)
+	fixDelegation.NodeID = common.NodeID(a.candidate.NodeId)
+	fixDelegation.StakingBlockNumber = a.candidate.StakingBlockNum
+
 	//先计算委托收益
 	delegateRewardPerList, err := RewardMgrInstance().GetDelegateRewardPerList(hash, a.nodeID, a.stakingBlock, uint64(a.del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64())-1)
 	if snapshotdb.NonDbNotFoundErr(err) {
@@ -517,11 +639,11 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 			return err
 		}
 	}
-
+	//检查是否需要撤消当前委托
 	withdrewDel := a.shouldWithdrewDel(hash, blockNumber, rollBackAmount)
 	if withdrewDel {
 		//回滚错误金额
-		if err := a.fixImproperRestrictingAmountByDel(delAddr, improperRestrictingAmount, state); err != nil {
+		if err := a.fixImproperRestrictingAmountByDel(delAddr, improperRestrictingAmount, state, fixDelegation); err != nil {
 			return err
 		}
 
@@ -550,6 +672,11 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 			return common.InternalError
 		}
 
+		//stats
+		//用户从某节点全部撤消委托后，记录用户的委托收益
+		//撤消委托，构造调整记录，记录用户的委托收益
+		fixDelegation.Withdraw = true
+		fixDelegation.RewardAmount = a.del.CumulativeIncome
 		//删除委托
 		if err := stdb.DelDelegateStore(hash, delAddr, a.nodeID, a.stakingBlock); nil != err {
 			return err
@@ -558,15 +685,22 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 		log.Debug("fix issue 1625 for delegate,withdrew del", "account", delAddr, "candidate", a.nodeID.String(), "income", a.del.CumulativeIncome)
 	} else {
 		//不需要解除委托
-		if err := a.fixImproperRestrictingAmountByDel(delAddr, improperRestrictingAmount, state); err != nil {
+		if err := a.fixImproperRestrictingAmountByDel(delAddr, improperRestrictingAmount, state, fixDelegation); err != nil {
 			return err
 		}
 		if err := stdb.SetDelegateStore(hash, delAddr, a.nodeID, a.stakingBlock, a.del); nil != err {
 			return err
 		}
+		//stats
+		//撤消委托，构造调整记录
+		fixDelegation.Withdraw = false
+
 		log.Debug("fix issue 1625 for delegate,decrease del", "account", delAddr, "candidate", a.nodeID.String(), "restrictingPlan", a.del.RestrictingPlan, "restrictingPlanRes", a.del.RestrictingPlanHes,
 			"release", a.del.Released, "releaseHes", a.del.ReleasedHes, "income", a.del.CumulativeIncome)
 	}
+
+	//stats
+	common.CollectFixDelegation(blockNumber.Uint64(), a.candidate.StakingAddress, fixDelegation)
 
 	if a.candidate.IsNotEmpty() {
 		if a.candidate.IsValid() {
@@ -589,26 +723,45 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 }
 
 //修正委托以及验证人的锁仓信息
-func (a *issue1625AccountDelInfo) fixImproperRestrictingAmountByDel(delAddr common.Address, improperRestrictingAmount *big.Int, state xcom.StateDB) error {
+//
+// 退回前委托的挪用的锁仓金额（挪用的锁仓资金，只是体现在委托信息的RestrictingPlanHes/RestrictingPlan字段中。）
+// 用户的委托信息修改后，接受委托的节点信息，也需要修改接受的委托金额。
+// param: delAddr					委托用户地址
+// param: improperRestrictingAmount	当前委托的挪用的锁仓金额
+// param: state
+func (a *issue1625AccountDelInfo) fixImproperRestrictingAmountByDel(delAddr common.Address, improperRestrictingAmount *big.Int, state xcom.StateDB, fixDelegation *common.FixDelegation) error {
+	//退回当前委托挪用的锁仓金额
 	if err := rt.ReturnWrongLockFunds(delAddr, improperRestrictingAmount, state); nil != err {
 		return err
 	}
 	if a.del.RestrictingPlanHes.Cmp(improperRestrictingAmount) >= 0 {
+		//委托的犹豫期委托金额（来自锁仓的） > 挪用的锁仓金额，则从 委托的犹豫期委托金额（来自锁仓的）直接扣除挪用的锁仓金额即可。
 		a.del.RestrictingPlanHes.Sub(a.del.RestrictingPlanHes, improperRestrictingAmount)
 		if a.candidate.IsNotEmpty() {
+			//修改委托节点上的总委托金额（犹豫期的）
 			a.candidate.DelegateTotalHes.Sub(a.candidate.DelegateTotalHes, improperRestrictingAmount)
 		}
+		//stats
+		fixDelegation.ImproperHesitatingRestrictingAmount = improperRestrictingAmount
+		fixDelegation.ImproperValidRestrictingAmount = common.Big0
 	} else {
+		// 委托的犹豫期委托金额（来自锁仓的） <= 挪用的锁仓金额， 则扣除掉委托的犹豫期委托金额（来自锁仓的），并把余下的挪用金额，从委托的有效委托金额（来自锁仓的）里扣除；
 		hes := new(big.Int).Set(a.del.RestrictingPlanHes)
 		a.del.RestrictingPlanHes = new(big.Int)
 		a.del.RestrictingPlan = new(big.Int).Sub(a.del.RestrictingPlan, new(big.Int).Sub(improperRestrictingAmount, hes))
 		if a.candidate.IsNotEmpty() {
+			// 修改委托节点上的总委托金额（犹豫期的，以及有效的）
 			a.candidate.DelegateTotalHes.Sub(a.candidate.DelegateTotalHes, hes)
 			a.candidate.DelegateTotal.Sub(a.candidate.DelegateTotal, new(big.Int).Sub(improperRestrictingAmount, hes))
 		}
+
+		//stats
+		fixDelegation.ImproperHesitatingRestrictingAmount = hes
+		fixDelegation.ImproperValidRestrictingAmount = new(big.Int).Sub(improperRestrictingAmount, hes)
 	}
 	if a.candidate.IsNotEmpty() {
 		if a.candidate.Shares.Cmp(improperRestrictingAmount) >= 0 {
+			//修改委托节点上的shares（用来算权重的）
 			a.candidate.SubShares(improperRestrictingAmount)
 		}
 	}
