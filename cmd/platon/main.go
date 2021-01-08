@@ -28,6 +28,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PlatONnetwork/PlatON-Go/x/plugin"
+
 	"github.com/panjf2000/ants/v2"
 	"gopkg.in/urfave/cli.v1"
 
@@ -70,7 +72,6 @@ var (
 		utils.TxPoolNoLocalsFlag,
 		utils.TxPoolJournalFlag,
 		utils.TxPoolRejournalFlag,
-		utils.TxPoolPriceLimitFlag,
 		utils.TxPoolPriceBumpFlag,
 		utils.TxPoolAccountSlotsFlag,
 		utils.TxPoolGlobalSlotsFlag,
@@ -92,10 +93,8 @@ var (
 		utils.MaxConsensusPeersFlag,
 		utils.MaxPendingPeersFlag,
 		utils.MinerGasTargetFlag,
-		utils.MinerLegacyGasTargetFlag,
 		//utils.MinerGasLimitFlag,
 		utils.MinerGasPriceFlag,
-		utils.MinerLegacyGasPriceFlag,
 		//	utils.MinerExtraDataFlag,
 		//utils.MinerLegacyExtraDataFlag,
 		utils.NATFlag,
@@ -117,6 +116,7 @@ var (
 		utils.NoCompactionFlag,
 		utils.GpoBlocksFlag,
 		utils.GpoPercentileFlag,
+		utils.Issue1625Config,
 		configFileFlag,
 	}
 
@@ -298,6 +298,12 @@ func platon(ctx *cli.Context) error {
 	}
 	node := makeFullNode(ctx)
 	startNode(ctx, node)
+
+	config := ctx.GlobalString(utils.Issue1625Config.Name)
+	if config != "" {
+		plugin.Issue1625Config = config
+	}
+
 	node.Wait()
 	return nil
 }
@@ -372,10 +378,8 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 		utils.Fatalf("PlatON service not running: %v", err)
 	}
 	// Set the gas price to the limits from the CLI and start mining
-	gasprice := utils.GlobalBig(ctx, utils.MinerLegacyGasPriceFlag.Name)
-	if ctx.IsSet(utils.MinerGasPriceFlag.Name) {
-		gasprice = utils.GlobalBig(ctx, utils.MinerGasPriceFlag.Name)
-	}
+	gasprice := utils.GlobalBig(ctx, utils.MinerGasPriceFlag.Name)
+
 	ethereum.TxPool().SetGasPrice(gasprice)
 
 	if err := ethereum.StartMining(); err != nil {

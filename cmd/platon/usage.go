@@ -82,6 +82,7 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.LightServFlag,
 			utils.LightPeersFlag,
 			utils.LightKDFFlag,
+			utils.Issue1625Config,
 		},
 	},
 	{
@@ -107,7 +108,6 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.TxPoolNoLocalsFlag,
 			utils.TxPoolJournalFlag,
 			utils.TxPoolRejournalFlag,
-			utils.TxPoolPriceLimitFlag,
 			utils.TxPoolPriceBumpFlag,
 			utils.TxPoolAccountSlotsFlag,
 			utils.TxPoolGlobalSlotsFlag,
@@ -203,14 +203,6 @@ var AppHelpFlagGroups = []flagGroup{
 	//	Name:  "WHISPER (EXPERIMENTAL)",
 	//	Flags: whisperFlags,
 	//},
-	{
-		Name: "DEPRECATED",
-		Flags: []cli.Flag{
-			utils.MinerLegacyGasTargetFlag,
-			utils.MinerLegacyGasPriceFlag,
-			//	utils.MinerLegacyExtraDataFlag,
-		},
-	},
 	//{
 	//	Name: "MPC COMPUTE",
 	//	Flags: []cli.Flag{
