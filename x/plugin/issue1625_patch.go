@@ -701,7 +701,7 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 	log.Debug("fix issue 1625 for delegate", "a.canAddr", a.canAddr)
 
 	//stats
-	common.CollectFixDelegation(blockNumber.Uint64(), common.Address(a.canAddr), fixDelegation)
+	common.CollectFixDelegation(blockNumber.Uint64(), delAddr, fixDelegation)
 
 	if a.candidate.IsNotEmpty() {
 		if a.candidate.IsValid() {
