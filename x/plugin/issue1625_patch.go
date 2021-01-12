@@ -612,6 +612,8 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 		log.Debug("fix issue 1625 for delegate ,can begin info", "account", delAddr, "candidate", a.nodeID.String(), "share", a.candidate.Shares, "candidate.del", a.candidate.DelegateTotal, "candidate.delhes", a.candidate.DelegateTotalHes, "canValid", a.candidate.IsValid())
 	}
 
+	log.Debug("collect fix delegation", "a.candidate.NodeId", a.candidate.NodeId, "candidate", a.candidate)
+
 	//stats
 	//fix委托，构造调整记录
 	fixDelegation := new(common.FixDelegation)
