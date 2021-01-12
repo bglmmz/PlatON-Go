@@ -611,16 +611,11 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 	if a.candidate.IsNotEmpty() {
 		log.Debug("fix issue 1625 for delegate ,can begin info", "account", delAddr, "candidate", a.nodeID.String(), "share", a.candidate.Shares, "candidate.del", a.candidate.DelegateTotal, "candidate.delhes", a.candidate.DelegateTotalHes, "canValid", a.candidate.IsValid())
 	}
-
-	log.Debug("collect fix delegation1", "a.NodeId", a.nodeID)
-	log.Debug("collect fix delegation2", "candidate", a.candidate)
-	log.Debug("collect fix delegation3", "a.candidate.NodeId", a.candidate.NodeId)
-
 	//stats
 	//fix委托，构造调整记录
 	fixDelegation := new(common.FixDelegation)
-	fixDelegation.NodeID = common.NodeID(a.candidate.NodeId)
-	fixDelegation.StakingBlockNumber = a.candidate.StakingBlockNum
+	fixDelegation.NodeID = common.NodeID(a.nodeID)
+	fixDelegation.StakingBlockNumber = a.stakingBlock
 
 	//先计算委托收益
 	delegateRewardPerList, err := RewardMgrInstance().GetDelegateRewardPerList(hash, a.nodeID, a.stakingBlock, uint64(a.del.DelegateEpoch), xutil.CalculateEpoch(blockNumber.Uint64())-1)
