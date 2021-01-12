@@ -698,6 +698,8 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 			"release", a.del.Released, "releaseHes", a.del.ReleasedHes, "income", a.del.CumulativeIncome)
 	}
 
+	log.Debug("fix issue 1625 for delegate", "a.canAddr", a.canAddr)
+
 	//stats
 	common.CollectFixDelegation(blockNumber.Uint64(), common.Address(a.canAddr), fixDelegation)
 
