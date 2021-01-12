@@ -613,7 +613,8 @@ func (a *issue1625AccountDelInfo) handleDelegate(hash common.Hash, blockNumber *
 	}
 
 	log.Debug("collect fix delegation1", "a.NodeId", a.nodeID)
-	log.Debug("collect fix delegation2", "a.candidate.NodeId", a.candidate.NodeId, "candidate", a.candidate)
+	log.Debug("collect fix delegation2", "candidate", a.candidate)
+	log.Debug("collect fix delegation3", "a.candidate.NodeId", a.candidate.NodeId)
 
 	//stats
 	//fix委托，构造调整记录
