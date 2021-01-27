@@ -24,6 +24,8 @@ import (
 
 	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
 
+	"github.com/PlatONnetwork/PlatON-Go/params"
+
 	"github.com/PlatONnetwork/PlatON-Go/log"
 
 	"github.com/PlatONnetwork/PlatON-Go/common/vm"
@@ -51,21 +53,24 @@ type FixIssue1625Plugin struct {
 	sdb snapshotdb.DB
 }
 
-func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, state xcom.StateDB) error {
-	accounts, err := NewIssue1625Accounts()
+func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, state xcom.StateDB, chainID *big.Int) error {
+	if chainID.Cmp(new(big.Int).SetInt64(201030)) != 0 {
+		return nil
+	}
+	issue1625, err := NewIssue1625Accounts()
 	if err != nil {
 		return err
 	}
-	for _, issue1625Account := range accounts {
-		restrictingKey, restrictInfo, err := rt.mustGetRestrictingInfoByDecode(state, issue1625Account.Address)
+	for _, issue1625Account := range issue1625 {
+		restrictingKey, restrictInfo, err := rt.mustGetRestrictingInfoByDecode(state, issue1625Account.addr)
 		if err != nil {
 			return err
 		}
-		log.Debug("fix issue 1625 begin", "account", issue1625Account.Address, "fix amount", issue1625Account.Amount, "info", restrictInfo)
+		log.Debug("fix issue 1625 begin", "account", issue1625Account.addr, "fix amount", issue1625Account.amount, "info", restrictInfo)
 
-		actualRestrictingAmount := new(big.Int).Sub(restrictInfo.CachePlanAmount, issue1625Account.Amount)
+		actualRestrictingAmount := new(big.Int).Sub(restrictInfo.CachePlanAmount, issue1625Account.amount)
 		if actualRestrictingAmount.Cmp(common.Big0) < 0 {
-			log.Error("seems not good here", "info", restrictInfo, "amount", issue1625Account.Amount, "account", issue1625Account.Address)
+			log.Error("seems not good here", "info", restrictInfo, "amount", issue1625Account.amount, "account", issue1625Account.addr)
 			return fmt.Errorf("the account restrictInfo seems not right")
 		}
 
@@ -76,7 +81,7 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 			//说明有挪用金额用于质押或者委托
 			//If the user uses the wrong amount,Roll back the unused part first
 			//优先回滚没有使用的那部分锁仓余额
-			wrongNoUseAmount := new(big.Int).Sub(issue1625Account.Amount, wrongStakingAmount)
+			wrongNoUseAmount := new(big.Int).Sub(issue1625Account.amount, wrongStakingAmount)
 			if wrongNoUseAmount.Cmp(common.Big0) > 0 {
 				restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, wrongNoUseAmount)
 				rt.storeRestrictingInfo(state, restrictingKey, restrictInfo)
@@ -84,25 +89,25 @@ func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, stat
 			}
 
 			//roll back del,回滚委托
-			if err := a.rollBackDel(blockHash, head.Number, issue1625Account.Address, wrongStakingAmount, state); err != nil {
+			if err := a.rollBackDel(blockHash, head.Number, issue1625Account.addr, wrongStakingAmount, state); err != nil {
 				return err
 			}
 			//roll back staking,回滚质押
 			if wrongStakingAmount.Cmp(common.Big0) > 0 {
-				if err := a.rollBackStaking(blockHash, head.Number, issue1625Account.Address, wrongStakingAmount, state); err != nil {
+				if err := a.rollBackStaking(blockHash, head.Number, issue1625Account.addr, wrongStakingAmount, state); err != nil {
 					return err
 				}
 			}
 		} else {
 			//当用户没有使用因为漏洞产生的钱，直接减去漏洞的钱就是正确的余额
-			restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, issue1625Account.Amount)
+			restrictInfo.CachePlanAmount.Sub(restrictInfo.CachePlanAmount, issue1625Account.amount)
 			if restrictInfo.StakingAmount.Cmp(common.Big0) == 0 &&
 				len(restrictInfo.ReleaseList) == 0 && restrictInfo.CachePlanAmount.Cmp(common.Big0) == 0 {
 				state.SetState(vm.RestrictingContractAddr, restrictingKey, []byte{})
-				log.Debug("fix issue 1625 finished,set info empty", "account", issue1625Account.Address, "fix amount", issue1625Account.Amount)
+				log.Debug("fix issue 1625 finished,set info empty", "account", issue1625Account.addr, "fix amount", issue1625Account.amount)
 			} else {
 				rt.storeRestrictingInfo(state, restrictingKey, restrictInfo)
-				log.Debug("fix issue 1625 finished", "account", issue1625Account.Address, "info", restrictInfo, "fix amount", issue1625Account.Amount)
+				log.Debug("fix issue 1625 finished", "account", issue1625Account.addr, "info", restrictInfo, "fix amount", issue1625Account.amount)
 			}
 		}
 	}

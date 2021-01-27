@@ -17,6 +17,7 @@
 package plugin
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"sync"
@@ -96,6 +97,9 @@ func (govPlugin *GovPlugin) BeginBlock(blockHash common.Hash, header *types.Head
 	if isVersionProposal {
 		//log.Debug("found pre-active version proposal", "proposalID", preActiveVersionProposalID, "blockNumber", blockNumber, "blockHash", blockHash, "activeBlockNumber", versionProposal.GetActiveBlock())
 		if blockNumber == versionProposal.GetActiveBlock() {
+			if params.LtMinorVersion(versionProposal.NewVersion) {
+				panic(fmt.Sprintf("Please upgrade to：%s", params.FormatVersion(versionProposal.NewVersion)))
+			}
 			//log.Debug("it's time to active the pre-active version proposal")
 			tallyResult, err := gov.GetTallyResult(preActiveVersionProposalID, state)
 			if err != nil || tallyResult == nil {
@@ -305,7 +309,7 @@ func tallyVersion(proposal *gov.VersionProposal, blockHash common.Hash, blockNum
 			return err
 		}
 		//log.Debug("call stk.ProposalPassedNotify", "proposalID", proposalID, "activeList", activeList)
-		if err := stk.ProposalPassedNotify(blockHash, blockNumber, activeList, proposal.NewVersion); err != nil {
+		if err := stk.ProposalPassedNotify(blockHash, blockNumber, activeList, proposal.NewVersion, state); err != nil {
 			log.Error("call stk.ProposalPassedNotify failed", "proposalID", proposalID, "blockHash", blockHash, "newVersion", proposal.NewVersion, "activeList", activeList)
 			return err
 		}
