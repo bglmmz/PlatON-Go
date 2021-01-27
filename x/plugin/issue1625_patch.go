@@ -24,8 +24,6 @@ import (
 
 	"github.com/PlatONnetwork/PlatON-Go/p2p/discover"
 
-	"github.com/PlatONnetwork/PlatON-Go/params"
-
 	"github.com/PlatONnetwork/PlatON-Go/log"
 
 	"github.com/PlatONnetwork/PlatON-Go/common/vm"
