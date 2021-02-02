@@ -99,7 +99,7 @@ func (rmp *RewardMgrPlugin) EndBlock(blockHash common.Hash, head *types.Header, 
 	var err error
 
 	if head.Number.Uint64() == common.Big1.Uint64() {
-		//第一个块，也就是第一个EPOCH，所以首先要计算第一个EPOCH的出块奖励、质押奖励
+		//第一个块，也就是第一个EPOCH，所以首先要计算第一个EPOCH的每个新块的出块奖励，第一个epoch的总的质押奖励
 		packageReward, stakingReward, err = rmp.CalcEpochReward(blockHash, head, state)
 		if nil != err {
 			log.Error("Execute CalcEpochReward fail", "blockNumber", head.Number.Uint64(), "blockHash", blockHash.TerminalString(), "err", err)
@@ -119,7 +119,7 @@ func (rmp *RewardMgrPlugin) EndBlock(blockHash common.Hash, head *types.Header, 
 		}
 	}
 	//委托用户奖励，包括接的（质押奖励+出块奖励）*委托分红比例
-	//分配出块奖励
+	//分配出块奖励，质押节点能直接收到出块奖励，委托用户的出块奖励，会从激励池转入委托奖励合约
 	if err := rmp.AllocatePackageBlock(blockHash, head, packageReward, state); err != nil {
 		return err
 	}
@@ -535,7 +535,7 @@ func (rmp *RewardMgrPlugin) AllocatePackageBlock(blockHash common.Hash, head *ty
 		return err
 	}
 	//stats,
-	//tddo:跟踪系统需要知道coinBase/minerAddress和nodeId的对应关系
+
 	blockReward := big.NewInt(0).Set(reward)
 	if currVerifier {
 		cm, err := rmp.stakingPlugin.GetCanMutable(blockHash, add)
@@ -544,6 +544,7 @@ func (rmp *RewardMgrPlugin) AllocatePackageBlock(blockHash common.Hash, head *ty
 			return err
 		}
 		if cm.ShouldGiveDelegateReward() {
+			//TODO： 如果不需要分配
 			delegateReward := new(big.Int).SetUint64(0)
 			delegateReward, reward = rmp.CalDelegateRewardAndNodeReward(reward, cm.RewardPer)
 			//2. 委托用户，出块奖励从激励池发放到委托激励合约。
@@ -785,6 +786,7 @@ func (rmp *RewardMgrPlugin) runIncreaseIssuance(blockHash common.Hash, head *typ
 //每个结算周期末，计算下一个epoch激励金；
 //如果在这个结算周期末需要增发，则先增发，在执行计算下一个epoch的激励金
 //特殊点：第一个epoch的激励金，是第一个epoch的第一个块来计算的。
+//返回下个epoch每个新区块得出块奖励/下个epoch的总的质押奖励
 func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.Header, state xcom.StateDB) (*big.Int, *big.Int, error) {
 	//获取当年剩余的激励池可用金额数,
 	//重放难度系数：1， desc：用blockHash, reward.RemainingRewardKey作为UNIKEY存储到mysql中
