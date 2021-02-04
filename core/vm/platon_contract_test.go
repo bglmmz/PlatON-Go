@@ -1065,3 +1065,16 @@ func setVerifierList(blockHash common.Hash, valArr *staking.ValidatorArray) erro
 
 	return nil
 }
+
+func TestStakingPlugin_NodeId2Addr(t *testing.T) {
+	nodeid := discover.MustHexID("0x2cb90a53d1820c0c932752063e0c0ccf6b09f546db7c2247292d725e95a5519b4206f05186e4fc413343a4399e548529509e90a1aa0eaf5f214b8bd2c124aa08")
+	addr, _ := xutil.NodeId2Addr(nodeid)
+	t.Log(addr.Hex())                           //0x1aDF6ee02c96B8e0F378f29FA55d552e88965dC5
+	bech := common.BytesToAddress(addr.Bytes()) //atp1rt0kacpvj6uwpumc72062h2496yfvhw9vertvv
+	t.Log(bech)
+	t.Log(bech.Bech32WithPrefix("atp"))
+	reward := big.NewInt(102)
+	validatorNum := big.NewInt(25)
+	everyValidatorReward := new(big.Int).Div(reward, validatorNum)
+	t.Log("everyValidatorReward", everyValidatorReward)
+}
