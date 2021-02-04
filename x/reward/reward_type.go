@@ -28,17 +28,17 @@ import (
 
 func NewDelegateRewardPer(epoch uint64, totalReward, totalDelegate *big.Int) *DelegateRewardPer {
 	return &DelegateRewardPer{
-		Left:     totalDelegate,
+		Left:     totalDelegate, //未领取奖励的委托
 		Epoch:    epoch,
 		Delegate: totalDelegate,
-		Reward:   totalReward,
+		Reward:   totalReward, //总的有效委托
 	}
 }
 
 //todo：这英文没看到呢？
 type DelegateRewardPer struct {
 	//this is the node total effective delegate  amount at this epoch,will Decrease when receive delegate reward
-	//节点在该周期的剩余委托金额，账户每次领取收益都会扣除对应委托金额，当该值为0时该记录删除
+	//节点在该周期的尚未领取奖励的委托金额，账户每次领取收益都会扣除对应委托金额，当该值为0时该记录删除
 	Left  *big.Int
 	Epoch uint64
 	//this is the node total delegate reward per amount at this epoch
@@ -49,6 +49,7 @@ type DelegateRewardPer struct {
 	Reward *big.Int
 }
 
+//IMPORTANT，lvxiaoyi: 先乘法，再除法。和先除法算单价，再乘法算委托奖励。两种方法结果可能不同。
 func (d *DelegateRewardPer) CalDelegateReward(delegate *big.Int) *big.Int {
 	tmp := new(big.Int).Mul(delegate, d.Reward)
 	return new(big.Int).Div(tmp, d.Delegate)
