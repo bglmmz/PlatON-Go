@@ -968,6 +968,8 @@ func (rmp *RewardMgrPlugin) CalcEpochReward(blockHash common.Hash, head *types.H
 		return nil, nil, err
 	}
 	//下个epoch，每个块的出块奖励
+	//todo: lvxiaoyi, 得到newBlockReward后， epochTotalNewBlockReward还有余数怎么处理？
+	// 这种情况下，激励池管理合约中，本年度可用奖励基金，可能会有零头余下，这个零头，会归集到下个年度；因为在下个年度开始时，会获取激励池管理合约地址余额，相当于这个余额比预想的多了个零头。
 	newBlockReward := new(big.Int).Div(epochTotalNewBlockReward, new(big.Int).SetInt64(int64(epochBlocks)))
 	if err := StorageNewBlockReward(blockHash, rmp.db, newBlockReward); nil != err {
 		log.Error("Failed to execute CalcEpochReward function", "currentBlockNumber", head.Number, "currentBlockHash", blockHash.TerminalString(), "err", err)
