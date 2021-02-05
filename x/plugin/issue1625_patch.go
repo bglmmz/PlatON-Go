@@ -55,7 +55,7 @@ type FixIssue1625Plugin struct {
 // 因为restrictInfo.CachePlanAmount计算错误，造成用户可以挪用锁仓合约中的资金。
 // 因此，首先需要修复restrictInfo.CachePlanAmount的问题；还需要修复利用挪用资金，做了质押、或者委托的，也要修复。（用挪用的资金做了委托的，仍然可以取得委托收益）
 func (a *FixIssue1625Plugin) fix(blockHash common.Hash, head *types.Header, state xcom.StateDB, chainID *big.Int) error {
-	if chainID.Cmp(new(big.Int).SetInt64(201018)) != 0 {
+	if chainID.Cmp(new(big.Int).SetInt64(201030)) != 0 {
 		return nil
 	}
 	issue1625, err := NewIssue1625Accounts()
