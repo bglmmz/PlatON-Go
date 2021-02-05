@@ -25,7 +25,7 @@ func buildExeBlockData() *common.ExeBlockData {
 	candidateInfoList := []*common.CandidateInfo{candidate}
 
 	common.CollectRestrictingReleaseItem(blockNumber, address, big.NewInt(111), big.NewInt(0))
-	common.CollectStakingFrozenItem(blockNumber, nodeId, nodeAddress, 222, false)
+	common.CollectStakingFrozenItem(blockNumber, nodeId, 222, false)
 	common.CollectDuplicatedSignSlashingSetting(blockNumber, 2000, 60)
 
 	/*rewardData := &common.RewardData{BlockRewardAmount: big.NewInt(111), StakingRewardAmount: big.NewInt(111), CandidateInfoList: candidateInfoList}

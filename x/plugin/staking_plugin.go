@@ -2303,8 +2303,15 @@ func (sk *StakingPlugin) toSlash(state xcom.StateDB, blockNumber uint64, blockHa
 			"blockNumber", blockNumber, "blockHash", blockHash.Hex(), "slashType", slashItem.SlashType, "slashAmount", slashItem.Amount)
 	} else {
 		//stats: 收集节点要被惩罚的金额
-		common.CollectZeroSlashingItem(blockNumber, common.NodeID(can.NodeId), slashItem.Amount)
-
+		//common.CollectZeroSlashingItem(blockNumber, common.NodeID(can.NodeId), slashItem.Amount)
+		//todo:lvxiaoyi,不光0出块惩罚走这里，双签惩罚也走这里。所以，这里记录的就是惩罚金额；考虑修改ZeroSlashingItem这个名称为：SlashingItem\
+		//或者如下修改：
+		if slashItem.SlashType.IsLowRatio() {
+			common.CollectSlashingItem(blockNumber, common.NodeID(can.NodeId), slashItem.Amount, 0)
+		}
+		if slashItem.SlashType.IsDuplicateSign() {
+			common.CollectSlashingItem(blockNumber, common.NodeID(can.NodeId), slashItem.Amount, 1)
+		}
 		slashBalance := slashItem.Amount
 		// slash the balance
 		//stats:首先从已生效的质押金额，来自自有资金，中扣除惩罚
@@ -3639,7 +3646,7 @@ func (sk *StakingPlugin) addUnStakeItem(state xcom.StateDB, blockNumber uint64, 
 
 	//这里是解除质押引起的质押资金冻结
 	//stats: 保存需要清算的质押资金信息。
-	common.CollectStakingFrozenItem(blockNumber, common.NodeID(nodeId), canAddr, targetEpoch, false)
+	common.CollectStakingFrozenItem(blockNumber, common.NodeID(nodeId), targetEpoch, false)
 	return nil
 }
 
@@ -3663,7 +3670,7 @@ func (sk *StakingPlugin) addRecoveryUnStakeItem(blockNumber uint64, blockHash co
 	}
 
 	//stats: 保存需要冻结的，将来需要变成正常质押的质押资金信息
-	common.CollectStakingFrozenItem(blockNumber, common.NodeID(nodeId), canAddr, targetEpoch, true)
+	common.CollectStakingFrozenItem(blockNumber, common.NodeID(nodeId), targetEpoch, true)
 	return nil
 }
 

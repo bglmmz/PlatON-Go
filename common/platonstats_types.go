@@ -207,9 +207,10 @@ type CandidateInfo struct {
 	MinerAddress Address `json:"minerAddress,omitempty"` //备选节点的矿工地址（收益地址）
 }
 
-type ZeroSlashingItem struct {
+type SlashingItem struct {
 	NodeID         NodeID   `json:"nodeId,omitempty"`         //备选节点ID
 	SlashingAmount *big.Int `json:"slashingAmount,omitempty"` //0出块处罚金(从质押金扣)
+	SlashingType   uint16   `json:"slashingType,omitempty"`   //处罚类型（0-0出块惩罚；1-双签)
 }
 
 type DuplicatedSignSlashingSetting struct {
@@ -222,10 +223,10 @@ type StakingSetting struct {
 }
 
 type StakingFrozenItem struct {
-	NodeID        NodeID  `json:"nodeId,omitempty"`        //备选节点ID
-	NodeAddress   Address `json:"nodeAddress,omitempty"`   //备选节点地址
-	FrozenEpochNo uint64  `json:"frozenEpochNo,omitempty"` //质押资金，被解冻的结算周期（此周期最后一个块的endBlocker里）
-	Recovery      bool    `json:"recovery"`                //Recover=true；表示冻结期结束后，质押将变成有效质押；Recover=false, 表示冻结期结束后，质押将原来退回质押钱包（或者和锁仓合约）
+	NodeID NodeID `json:"nodeId,omitempty"` //备选节点ID
+	//StakingBlockNumber uint64 `json:"stakingBlockNumber,omitempty"` //备选节点地址
+	FrozenEpochNo uint64 `json:"frozenEpochNo,omitempty"` //质押资金，被解冻的结算周期（此周期最后一个块的endBlocker里）
+	Recovery      bool   `json:"recovery"`                //Recover=true；表示冻结期结束后，质押将变成有效质押；Recover=false, 表示冻结期结束后，质押将原路退回质押钱包（或者锁仓合约）
 }
 
 type RestrictingReleaseItem struct {
@@ -280,7 +281,7 @@ func PopExeBlockData(blockNumber uint64) *ExeBlockData {
 
 func InitExeBlockData(blockNumber uint64) {
 	exeBlockData := &ExeBlockData{
-		ZeroSlashingItemList:       make([]*ZeroSlashingItem, 0),
+		SlashingItemList:           make([]*SlashingItem, 0),
 		StakingFrozenItemList:      make([]*StakingFrozenItem, 0),
 		RestrictingReleaseItemList: make([]*RestrictingReleaseItem, 0),
 		EmbedTransferTxList:        make([]*EmbedTransferTx, 0),
@@ -299,7 +300,7 @@ type ExeBlockData struct {
 	ActiveVersion                 string                         `json:"activeVersion,omitempty"` //如果当前块有升级提案生效，则填写新版本,0.14.0
 	AdditionalIssuanceData        *AdditionalIssuanceData        `json:"additionalIssuanceData,omitempty"`
 	RewardData                    *RewardData                    `json:"rewardData,omitempty"`
-	ZeroSlashingItemList          []*ZeroSlashingItem            `json:"zeroSlashingItemList,omitempty"`
+	SlashingItemList              []*SlashingItem                `json:"slashingItemList,omitempty"`
 	DuplicatedSignSlashingSetting *DuplicatedSignSlashingSetting `json:"duplicatedSignSlashingSetting,omitempty"`
 	StakingSetting                *StakingSetting                `json:"stakingSetting,omitempty"`
 	StakingFrozenItemList         []*StakingFrozenItem           `json:"stakingFrozenItemList,omitempty"`
@@ -318,10 +319,10 @@ func CollectAdditionalIssuance(blockNumber uint64, additionalIssuanceData *Addit
 	}
 }
 
-func CollectStakingFrozenItem(blockNumber uint64, nodeId NodeID, nodeAddress NodeAddress, frozenEpochNo uint64, recovery bool) {
+func CollectStakingFrozenItem(blockNumber uint64, nodeId NodeID, frozenEpochNo uint64, recovery bool) {
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
-		log.Debug("CollectStakingFrozenItem", "blockNumber", blockNumber, "nodeId", Bytes2Hex(nodeId[:]), "nodeAddress", nodeAddress.Hex(), "frozenEpochNo", frozenEpochNo, "recovery", recovery)
-		exeBlockData.StakingFrozenItemList = append(exeBlockData.StakingFrozenItemList, &StakingFrozenItem{NodeID: nodeId, NodeAddress: Address(nodeAddress), FrozenEpochNo: frozenEpochNo, Recovery: recovery})
+		log.Debug("CollectStakingFrozenItem", "blockNumber", blockNumber, "nodeId", Bytes2Hex(nodeId[:]), "frozenEpochNo", frozenEpochNo, "recovery", recovery)
+		exeBlockData.StakingFrozenItemList = append(exeBlockData.StakingFrozenItemList, &StakingFrozenItem{NodeID: nodeId, FrozenEpochNo: frozenEpochNo, Recovery: recovery})
 	}
 }
 
@@ -376,10 +377,10 @@ func CollectStakingSetting(blockNumber uint64, operatingThreshold *big.Int) {
 	}
 }
 
-func CollectZeroSlashingItem(blockNumber uint64, nodeId NodeID, slashingAmount *big.Int) {
+func CollectSlashingItem(blockNumber uint64, nodeId NodeID, slashingAmount *big.Int, slashingType uint16) {
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
 		log.Debug("CollectZeroSlashingItem", "blockNumber", blockNumber, "nodeId", Bytes2Hex(nodeId[:]), "slashingAmount", slashingAmount)
-		exeBlockData.ZeroSlashingItemList = append(exeBlockData.ZeroSlashingItemList, &ZeroSlashingItem{NodeID: nodeId, SlashingAmount: slashingAmount})
+		exeBlockData.SlashingItemList = append(exeBlockData.SlashingItemList, &SlashingItem{NodeID: nodeId, SlashingAmount: slashingAmount, SlashingType: slashingType})
 	}
 }
 

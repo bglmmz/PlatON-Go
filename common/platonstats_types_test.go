@@ -77,8 +77,8 @@ func buildExeBlockData() *ExeBlockData {
 	candidateInfoList := []*CandidateInfo{candidate}
 
 	CollectRestrictingReleaseItem(blockNumber, address, big.NewInt(111), Big0)
-	CollectStakingFrozenItem(blockNumber, nodeId, nodeAddress, 222, true)
-	CollectStakingFrozenItem(blockNumber, nodeId, nodeAddress, 111, false)
+	CollectStakingFrozenItem(blockNumber, nodeId, 222, true)
+	CollectStakingFrozenItem(blockNumber, nodeId, 111, false)
 	CollectDuplicatedSignSlashingSetting(blockNumber, 2000, 60)
 
 	//rewardData := &RewardData{BlockRewardAmount: big.NewInt(12), StakingRewardAmount: big.NewInt(12), CandidateInfoList: candidateInfoList}
