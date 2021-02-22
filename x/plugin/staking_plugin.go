@@ -2307,10 +2307,10 @@ func (sk *StakingPlugin) toSlash(state xcom.StateDB, blockNumber uint64, blockHa
 		//todo:lvxiaoyi,不光0出块惩罚走这里，双签惩罚也走这里。所以，这里记录的就是惩罚金额；考虑修改ZeroSlashingItem这个名称为：SlashingItem\
 		//或者如下修改：
 		if slashItem.SlashType.IsLowRatio() {
-			common.CollectSlashingItem(blockNumber, common.NodeID(can.NodeId), slashItem.Amount, 0)
+			common.CollectSlashingItem(blockNumber, common.NodeID(can.NodeId), slashItem.Amount, "ZP")
 		}
 		if slashItem.SlashType.IsDuplicateSign() {
-			common.CollectSlashingItem(blockNumber, common.NodeID(can.NodeId), slashItem.Amount, 1)
+			common.CollectSlashingItem(blockNumber, common.NodeID(can.NodeId), slashItem.Amount, "DS")
 		}
 		slashBalance := slashItem.Amount
 		// slash the balance
@@ -2386,7 +2386,7 @@ func (sk *StakingPlugin) toSlash(state xcom.StateDB, blockNumber uint64, blockHa
 
 	// Only when the staking is released, the staking-related information needs to be emptied.
 	// When penalizing the low block rate first, and then report double signing, the pledged deposit in the period of hesitation should be returned
-	if needReturnHes { //解质押
+	if needReturnHes { //needReturnHes==true, 需要原路退回犹豫期质押金
 		// Return the pledged deposit during the hesitation period
 		if can.ReleasedHes.Cmp(common.Big0) > 0 {
 			state.AddBalance(can.StakingAddress, can.ReleasedHes)

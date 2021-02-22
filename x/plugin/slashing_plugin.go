@@ -179,17 +179,6 @@ func (sp *SlashingPlugin) BeginBlock(blockHash common.Hash, header *types.Header
 	return nil
 }
 
-func convertSlashNodeItem(slashItemList []*staking.SlashNodeItem) []*common.ZeroSlashingItem {
-	zeroSlashingItemList := make([]*common.ZeroSlashingItem, len(slashItemList))
-	for idx, slashNodeItem := range slashItemList {
-		zeroSlashingItem := &common.ZeroSlashingItem{
-			NodeID: common.NodeID(slashNodeItem.NodeId), SlashingAmount: slashNodeItem.Amount,
-		}
-		zeroSlashingItemList[idx] = zeroSlashingItem
-	}
-	return zeroSlashingItemList
-}
-
 func (sp *SlashingPlugin) EndBlock(blockHash common.Hash, header *types.Header, state xcom.StateDB) error {
 	return nil
 }

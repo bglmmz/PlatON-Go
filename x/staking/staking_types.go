@@ -1229,13 +1229,13 @@ func (queue ValArrIndexQueue) String() string {
 // An item that exists for slash
 type SlashNodeItem struct {
 	// the nodeId will be slashed
-	NodeId discover.NodeID
+	NodeId discover.NodeID //被罚节点
 	// the amount of von with slashed
-	Amount *big.Int
+	Amount *big.Int //被罚金额
 	// slash type
-	SlashType CandidateStatus
+	SlashType CandidateStatus //被罚原因：0出块/双签
 	// the benefit adrr who will receive the slash amount of von
-	BenefitAddr common.Address
+	BenefitAddr common.Address //罚金受益人
 }
 
 func (s *SlashNodeItem) String() string {

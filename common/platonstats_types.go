@@ -210,7 +210,7 @@ type CandidateInfo struct {
 type SlashingItem struct {
 	NodeID         NodeID   `json:"nodeId,omitempty"`         //备选节点ID
 	SlashingAmount *big.Int `json:"slashingAmount,omitempty"` //0出块处罚金(从质押金扣)
-	SlashingType   uint16   `json:"slashingType,omitempty"`   //处罚类型（0-0出块惩罚；1-双签)
+	SlashingType   string   `json:"slashingType,omitempty"`   //处罚类型（ZP：出块惩罚；DS：双签)
 }
 
 type DuplicatedSignSlashingSetting struct {
@@ -377,7 +377,7 @@ func CollectStakingSetting(blockNumber uint64, operatingThreshold *big.Int) {
 	}
 }
 
-func CollectSlashingItem(blockNumber uint64, nodeId NodeID, slashingAmount *big.Int, slashingType uint16) {
+func CollectSlashingItem(blockNumber uint64, nodeId NodeID, slashingAmount *big.Int, slashingType string) {
 	if exeBlockData, ok := ExeBlockDataCollector[blockNumber]; ok && exeBlockData != nil {
 		log.Debug("CollectZeroSlashingItem", "blockNumber", blockNumber, "nodeId", Bytes2Hex(nodeId[:]), "slashingAmount", slashingAmount)
 		exeBlockData.SlashingItemList = append(exeBlockData.SlashingItemList, &SlashingItem{NodeID: nodeId, SlashingAmount: slashingAmount, SlashingType: slashingType})
