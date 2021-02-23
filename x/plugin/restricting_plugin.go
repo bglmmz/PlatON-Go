@@ -657,6 +657,9 @@ func (rp *RestrictingPlugin) releaseRestricting(blockNumber uint64, epoch uint64
 
 		restrictingKey, restrictInfo, err := rp.mustGetRestrictingInfoByDecode(state, account)
 		if err != nil {
+			if err == restricting.ErrAccountNotFound {
+				continue
+			}
 			return err
 		}
 
