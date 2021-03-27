@@ -31,7 +31,7 @@ func Test_statsBlockExt(t *testing.T) {
 	}
 	statsBlockExt := &StatsBlockExt{
 		BlockType:   brief.BlockType,
-		EpochNo:     brief.EpochNo,
+		Epoch:       brief.Epoch,
 		NodeID:      brief.NodeID,
 		NodeAddress: brief.NodeAddress,
 		//Block:        convertBlock(block),

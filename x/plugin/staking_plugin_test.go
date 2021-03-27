@@ -721,7 +721,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 		return
 	}
 
-	err = StakingInstance().EndBlock(currentHash, header, state)
+	err = StakingInstance().EndBlock(currentHash, header, state, nil)
 	if !assert.Nil(t, err, fmt.Sprintf("Failed to EndBlock, blockNumber: %d, err: %v", currentNumber, err)) {
 		return
 	}
@@ -776,7 +776,7 @@ func TestStakingPlugin_EndBlock(t *testing.T) {
 		return
 	}
 
-	err = StakingInstance().EndBlock(currentHash, header, state)
+	err = StakingInstance().EndBlock(currentHash, header, state, nil)
 	assert.Nil(t, err, fmt.Sprintf("Failed to Election, blockNumber: %d, err: %v", currentNumber, err))
 }
 
@@ -1038,7 +1038,7 @@ func TestStakingPlugin_Confirmed(t *testing.T) {
 		return
 	}
 
-	err = StakingInstance().EndBlock(currentHash, header, state)
+	err = StakingInstance().EndBlock(currentHash, header, state, nil)
 	if !assert.Nil(t, err, fmt.Sprintf("Failed to EndBlock, blockNumber: %d, err: %v", currentNumber, err)) {
 		return
 	}
@@ -2225,7 +2225,7 @@ func TestStakingPlugin_ElectNextVerifierList(t *testing.T) {
 		Start ElectNextVerifierList
 	*/
 	targetNum := xutil.EpochSize() * xutil.ConsensusSize()
-
+	targetEpoch := xutil.CalculateEpoch(targetNum)
 	targetNumInt := big.NewInt(int64(targetNum))
 
 	if err := sndb.NewBlock(blockNumber2, blockHash, blockHash2); nil != err {
@@ -2233,7 +2233,7 @@ func TestStakingPlugin_ElectNextVerifierList(t *testing.T) {
 		return
 	}
 
-	err = StakingInstance().ElectNextVerifierList(blockHash2, targetNumInt.Uint64(), state)
+	err = StakingInstance().ElectNextVerifierList(blockHash2, targetNumInt.Uint64(), targetEpoch, state, nil)
 
 	assert.Nil(t, err, fmt.Sprintf("Failed to ElectNextVerifierList: %v", err))
 

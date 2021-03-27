@@ -21,22 +21,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/PlatONnetwork/PlatON-Go/core/statsdb"
 	"io"
 	"os"
 	"reflect"
 	"strings"
 	"unicode"
 
-	cli "gopkg.in/urfave/cli.v1"
-
-	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
-
 	"github.com/PlatONnetwork/PlatON-Go/cmd/utils"
+	"github.com/PlatONnetwork/PlatON-Go/core/snapshotdb"
+	"github.com/PlatONnetwork/PlatON-Go/core/statsdb"
 	"github.com/PlatONnetwork/PlatON-Go/eth"
 	"github.com/PlatONnetwork/PlatON-Go/node"
 	"github.com/PlatONnetwork/PlatON-Go/params"
 	"github.com/naoina/toml"
+	cli "gopkg.in/urfave/cli.v1"
 )
 
 var (
@@ -82,6 +80,7 @@ type statsConfig struct {
 	BlockTopic           string `toml:",omitempty"`
 	AccountCheckingTopic string `toml:",omitempty"`
 	AccountCheckingGroup string `toml:",omitempty"`
+	Dsn                  string `toml:",omitempty"`
 }
 
 type platonConfig struct {
@@ -183,20 +182,12 @@ func makeConfigNode(ctx *cli.Context) (*node.Node, platonConfig) {
 	if ctx.GlobalIsSet(utils.StatsFlag.Name) {
 		statsConfig := ctx.GlobalString(utils.StatsFlag.Name)
 		configs := strings.Split(statsConfig, ";")
-		if len(configs) == 1 {
-			cfg.Stats.URL = configs[0]
-		} else if len(configs) == 2 {
-			cfg.Stats.URL = configs[0]
-			cfg.Stats.BlockTopic = configs[1]
-		} else if len(configs) == 3 {
-			cfg.Stats.URL = configs[0]
-			cfg.Stats.BlockTopic = configs[1]
-			cfg.Stats.AccountCheckingTopic = configs[2]
-		} else if len(configs) == 4 {
+		if len(configs) == 5 {
 			cfg.Stats.URL = configs[0]
 			cfg.Stats.BlockTopic = configs[1]
 			cfg.Stats.AccountCheckingTopic = configs[2]
 			cfg.Stats.AccountCheckingGroup = configs[3]
+			cfg.Stats.Dsn = configs[4]
 		} else {
 			utils.Fatalf("Failed to parse --stats command")
 		}
@@ -220,7 +211,7 @@ func makeFullNode(ctx *cli.Context) *node.Node {
 	}*/
 	//stats：数据统计
 	if len(cfg.Stats.URL) > 0 {
-		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Stats.AccountCheckingTopic, cfg.Stats.AccountCheckingGroup, cfg.Node.DataDir)
+		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Stats.AccountCheckingTopic, cfg.Stats.AccountCheckingGroup, cfg.Stats.Dsn, cfg.Node.DataDir)
 	}
 	return stack
 }
@@ -238,7 +229,7 @@ func makeFullNodeForCBFT(ctx *cli.Context) (*node.Node, platonConfig) {
 	}*/
 	//stats：数据统计
 	if cfg.Stats.URL != "" {
-		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Stats.AccountCheckingTopic, cfg.Stats.AccountCheckingGroup, cfg.Node.DataDir)
+		utils.RegisterStatsService(stack, cfg.Stats.URL, cfg.Stats.BlockTopic, cfg.Stats.AccountCheckingTopic, cfg.Stats.AccountCheckingGroup, cfg.Stats.Dsn, cfg.Node.DataDir)
 	}
 	return stack, cfg
 }

@@ -18,10 +18,11 @@ package plugin
 
 import (
 	"encoding/hex"
+	"testing"
+
 	"github.com/PlatONnetwork/PlatON-Go/common/vm"
 	"github.com/PlatONnetwork/PlatON-Go/params"
 	"github.com/PlatONnetwork/PlatON-Go/x/staking"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 
@@ -241,7 +242,7 @@ func beginBlock(t *testing.T) {
 }
 
 func endBlock(t *testing.T) {
-	err := govPlugin.EndBlock(lastBlockHash, &lastHeader, stateDB)
+	err := govPlugin.EndBlock(lastBlockHash, &lastHeader, stateDB, nil)
 	if err != nil {
 		t.Fatalf("end block err... %s", err)
 	}

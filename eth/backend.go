@@ -370,6 +370,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Ethereum, error) {
 		return nil, err
 	}
 
+	//MONITOR
+	//downloader 在NewProtocolManager中初始化
+	reactor.SetDownloader(eth.Downloader())
+
 	eth.APIBackend = &EthAPIBackend{eth, nil}
 	gpoParams := config.GPO
 	if gpoParams.Default == nil {

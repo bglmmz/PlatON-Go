@@ -49,6 +49,9 @@ const (
 
 type removeConsensusPeerFn func(node *discover.Node)
 
+//断开监控节点peer时的回调函数
+type monitorTaskDoneFurtherFn func(node *discover.Node) bool
+
 // NodeDialer is used to connect to nodes in the network, typically by using
 // an underlying net.Dialer but also using net.Pipe in tests
 type NodeDialer interface {
@@ -80,8 +83,8 @@ type dialstate struct {
 	lookupBuf     []*discover.Node // current discovery lookup results
 	randomNodes   []*discover.Node // filled from Table
 	static        map[discover.NodeID]*dialTask
-	//consensus     map[discover.NodeID]*dialTask
-	consensus	  *dialedTasks
+	consensus     *dialedTasks
+	monitorTasks  *monitorScheduler
 	hist          *dialHistory
 
 	start     time.Time        // time when the dialer was first used
@@ -111,6 +114,7 @@ type task interface {
 
 // A dialTask is generated for each node that is dialed. Its
 // fields cannot be accessed while the task is running.
+// 一个拨号任务负责拨通一个目标节点，建立TCP连接。
 type dialTask struct {
 	flags        connFlag
 	dest         *discover.Node
@@ -138,11 +142,12 @@ func newDialState(static []*discover.Node, bootnodes []*discover.Node, ntab disc
 		netrestrict: netrestrict,
 		static:      make(map[discover.NodeID]*dialTask),
 		//consensus:	 make(map[discover.NodeID]*dialTask),
-		consensus:   NewDialedTasks(maxConsensusPeers, nil),
-		dialing:     make(map[discover.NodeID]connFlag),
-		bootnodes:   make([]*discover.Node, len(bootnodes)),
-		randomNodes: make([]*discover.Node, maxdyn/2),
-		hist:        new(dialHistory),
+		consensus:    NewDialedTasks(maxConsensusPeers, nil),
+		monitorTasks: MonitorScheduler(),
+		dialing:      make(map[discover.NodeID]connFlag),
+		bootnodes:    make([]*discover.Node, len(bootnodes)),
+		randomNodes:  make([]*discover.Node, maxdyn/2),
+		hist:         new(dialHistory),
 	}
 	copy(s.bootnodes, bootnodes)
 	for _, n := range static {
@@ -187,6 +192,23 @@ func (s *dialstate) initRemoveConsensusPeerFn(removeConsensusPeerFn removeConsen
 	s.consensus.InitRemoveConsensusPeerFn(removeConsensusPeerFn)
 }
 
+func (s *dialstate) clearMonitorScheduler() {
+	s.monitorTasks.ClearMonitorScheduler()
+}
+
+func (s *dialstate) addMonitorTask(node *discover.Node) {
+	s.monitorTasks.AddMonitorTask(&monitorTask{flags: monitorConn, dest: node})
+}
+
+func (s *dialstate) removeMonitorTask(node *discover.Node) {
+	s.monitorTasks.RemoveMonitorTask(node.ID)
+}
+
+func (s *dialstate) initMonitorTaskDoneFurtherFn(monitorTaskDoneFurtherFn monitorTaskDoneFurtherFn) {
+	s.monitorTasks.InitMonitorTaskDoneFurtherFn(monitorTaskDoneFurtherFn)
+}
+
+// 从各个任务列表中，获取可以新建拨号的任务（正在拨号的，已经完成拨号的，黑名单的等除外）
 func (s *dialstate) newTasks(nRunning int, peers map[discover.NodeID]*Peer, now time.Time) []task {
 	if s.start.IsZero() {
 		s.start = now
@@ -239,6 +261,23 @@ func (s *dialstate) newTasks(nRunning int, peers map[discover.NodeID]*Peer, now 
 		case errNotWhitelisted, errSelf:
 			//delete(s.consensus, t.dest.ID)
 			s.consensus.RemoveTask(t.dest.ID)
+		case nil:
+			s.dialing[t.dest.ID] = t.flags
+			newtasks = append(newtasks, t)
+		}
+	}
+
+	// Create dials for monitor nodes if they are not connected.
+	for _, t := range s.monitorTasks.ListTask() {
+		err := s.checkDial(t.dest, peers)
+		switch err {
+		case errNotWhitelisted, errSelf:
+			s.monitorTasks.RemoveTask(t.dest.ID)
+		case errAlreadyConnected:
+			//已经连接了, 保存当前时间，从监控任务中删除
+			//s.monitorTasks.RemoveTask(t.dest.ID)
+			//SaveNodePingResult(t.dest.ID, t.dest.IP.String(), strconv.FormatUint(uint64(t.dest.TCP), 10), 1)
+			s.monitorTasks.monitorTaskDoneFurtherFn(t.dest)
 		case nil:
 			s.dialing[t.dest.ID] = t.flags
 			newtasks = append(newtasks, t)
@@ -327,9 +366,15 @@ func (s *dialstate) taskDone(t task, now time.Time) {
 	case *discoverTask:
 		s.lookupRunning = false
 		s.lookupBuf = append(s.lookupBuf, t.results...)
+	case *monitorTask:
+		s.hist.add(t.dest.ID, now.Add(dialHistoryExpiration))
+		delete(s.dialing, t.dest.ID)
+		t.MonitorTaskDoneFurther()
 	}
 }
 
+//拨号，建立TCP连接。
+//连接拨号任务中的目标节点。如果目标节点IP不知道，则通过resolve来查找目标节点。
 func (t *dialTask) Do(srv *Server) {
 	if t.dest.Incomplete() {
 		if !t.resolve(srv) {

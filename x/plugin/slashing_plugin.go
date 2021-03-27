@@ -190,7 +190,7 @@ func convertSlashNodeItem(slashItemList []*staking.SlashNodeItem) []*common.Zero
 	return zeroSlashingItemList
 }
 
-func (sp *SlashingPlugin) EndBlock(blockHash common.Hash, header *types.Header, state xcom.StateDB) error {
+func (sp *SlashingPlugin) EndBlock(blockHash common.Hash, header *types.Header, state xcom.StateDB, downloading Downloading) error {
 	return nil
 }
 
