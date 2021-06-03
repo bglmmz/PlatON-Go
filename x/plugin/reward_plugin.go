@@ -19,11 +19,12 @@ package plugin
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 	"math"
 	"math/big"
 	"sort"
 	"sync"
+
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
 
 	"github.com/AlayaNetwork/Alaya-Go/common/hexutil"
 

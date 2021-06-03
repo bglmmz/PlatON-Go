@@ -27,9 +27,6 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/AlayaNetwork/Alaya-Go/rlp"
-	"github.com/AlayaNetwork/Alaya-Go/x/gov"
-	"github.com/AlayaNetwork/Alaya-Go/x/slashing"
 	"github.com/AlayaNetwork/Alaya-Go/common"
 	"github.com/AlayaNetwork/Alaya-Go/common/consensus"
 	"github.com/AlayaNetwork/Alaya-Go/common/vm"
@@ -38,6 +35,9 @@ import (
 	"github.com/AlayaNetwork/Alaya-Go/crypto"
 	"github.com/AlayaNetwork/Alaya-Go/log"
 	"github.com/AlayaNetwork/Alaya-Go/p2p/discover"
+	"github.com/AlayaNetwork/Alaya-Go/rlp"
+	"github.com/AlayaNetwork/Alaya-Go/x/gov"
+	"github.com/AlayaNetwork/Alaya-Go/x/slashing"
 	"github.com/AlayaNetwork/Alaya-Go/x/staking"
 	"github.com/AlayaNetwork/Alaya-Go/x/xcom"
 	"github.com/AlayaNetwork/Alaya-Go/x/xutil"
